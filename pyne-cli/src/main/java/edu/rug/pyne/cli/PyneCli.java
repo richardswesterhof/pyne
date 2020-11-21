@@ -239,6 +239,11 @@ public class PyneCli {
         calendar.setTime(startDate);
         Date checkDate = calendar.getTime();
         // Go over all commits
+
+        if (commitMap.entrySet().isEmpty()) {
+            LOGGER.error("There are no commits between the periods of "+startDate+" and "+endDate+" to make a graph from");
+            return;
+        }
         for (Map.Entry<Date, String> commitEntry : commitMap.entrySet()) {
             Date commitDate = commitEntry.getKey();
             String commit = commitEntry.getValue();
