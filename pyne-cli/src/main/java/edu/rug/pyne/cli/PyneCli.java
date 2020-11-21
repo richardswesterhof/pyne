@@ -181,6 +181,7 @@ public class PyneCli {
                 return;
             }
         } else {
+            //TODO: this caused problems for me
             // Default 5x the period before the end date
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(endDate);
@@ -203,6 +204,7 @@ public class PyneCli {
             }
         } else {
             // Default the current working directory
+            // TODO: default this to an output directory in root folder?
             outputDirectory = FileSystems.getDefault().getPath(".").toFile();
         }
 
