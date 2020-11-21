@@ -12,3 +12,4 @@ pyne-demo/nbactions.xml
 pyne-demo/nb-configuration.xml
 .idea/
 structure101-settings.java.hsw
+*.graphml
