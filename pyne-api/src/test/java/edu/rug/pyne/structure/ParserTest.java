@@ -9,6 +9,7 @@ import java.io.File;
 
 public class ParserTest {
 
+    //TODO: fix this test by making the path relative
 //    @Test
 //    void testFindSourceDirs(){
 //        var rootDir = "";
