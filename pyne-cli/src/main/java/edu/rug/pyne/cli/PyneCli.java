@@ -181,6 +181,7 @@ public class PyneCli {
                 return;
             }
         } else {
+            //TODO: this caused problems for me
             // Default 5x the period before the end date
             Calendar calendar = Calendar.getInstance();
             calendar.setTime(endDate);
@@ -203,6 +204,7 @@ public class PyneCli {
             }
         } else {
             // Default the current working directory
+            // TODO: default this to an output directory in root folder?
             outputDirectory = FileSystems.getDefault().getPath(".").toFile();
         }
 
@@ -239,6 +241,11 @@ public class PyneCli {
         calendar.setTime(startDate);
         Date checkDate = calendar.getTime();
         // Go over all commits
+
+        if (commitMap.entrySet().isEmpty()) {
+            LOGGER.error("There are no commits between the periods of "+startDate+" and "+endDate+" to make a graph from");
+            return;
+        }
         for (Map.Entry<Date, String> commitEntry : commitMap.entrySet()) {
             Date commitDate = commitEntry.getKey();
             String commit = commitEntry.getValue();
