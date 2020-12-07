@@ -1,0 +1,7 @@
+The presentation for group 1 should be about the architecture and process of Pyne. They should try to answer the following questions during the presentation:
+1) What are the main components for a reverse engineering tool to build-up a dependency graph?
+2) What is the process of creating the dependency graph?
+3) Which architectural requirements are important to consider when developing a  reverse engineering tool to build-up a dependency graph?
+4) Which technologies need to be considered when developing a reverse engineering tool to build-up a dependency graph?
+
+Each presentation should not take more than 15 mins. I do expect to start the lecture with these 2 presentations at 1:00 PM.
