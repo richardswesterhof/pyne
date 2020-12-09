@@ -28,6 +28,7 @@ import org.eclipse.jgit.util.FileUtils;
  * @author Patrick Beuks (s2288842) <code@beuks.net>
  */
 public class GitHelper {
+    //TODO: why does this class require a parser to be given to it on each function? why not create one itself or take one in the constructor
 
     private static final Logger LOGGER
             = LogManager.getLogger(GitHelper.class);

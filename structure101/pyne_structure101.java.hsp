@@ -8,7 +8,7 @@
   <property name="project-type" value="maven" />
   <property name="hide-externals" value="false" />
   <property name="parse-archive-in-archive" value="false" />
-  <property name="include-injected-dependency" value="false" />
+  <property name="include-injected-dependency" value="true" />
   <property name="relative-to" value="const(THIS_FILE)" />
   <property name="action-set-mod" value="1" />
   <property name="detail-mode" value="true" />
@@ -40,9 +40,9 @@
     <set version="3" name="Action list 1" hiview="Codemap" active="true" todo="false" list="0" />
   </restructuring>
   <sourcepaths>
-    <pathentry type="file" path="..\pyne-api\src\main\java" />
-    <pathentry type="file" path="..\pyne-cli\src\main\java" />
-    <pathentry type="file" path="..\pyne-demo\src\main\java" />
+    <pathentry type="file" path="../pyne-api/src/main/java" />
+    <pathentry type="file" path="../pyne-cli/src/main/java" />
+    <pathentry type="file" path="../pyne-demo/src/main/java" />
   </sourcepaths>
   <grid-set sep="." version="5.0.15419" />
 </local-project>
