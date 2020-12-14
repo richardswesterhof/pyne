@@ -8,6 +8,8 @@ This must be done for all root packages, after which all root packages must be o
 
 Finally, an XML file must be exported by clicking "Tools" in the top left menu, clicking "Export LSM as image", select XML in the "Export as" dropdown menu, and choose a file location in the "Target file" textfield.
 
+The reason this is such an awkward process is because Strcuture101 only exports what is currently visible on screen
+
 # Running the program with the generated input
 The program simply takes 2 arguments on the command line, the first should be the path to the Structure101 XML file, and the second should be the path to the Pyne graphml file.
 
