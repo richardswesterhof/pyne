@@ -46,16 +46,21 @@ public class Main {
                 toolPerformances.put(tool, new ToolPerformance(tool));
             }
 
+            // initialize the document trees representing the XML files
             DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document structure101Doc = dBuilder.parse(structure101Graph);
             Document pyneDoc = dBuilder.parse(pyneGraph);
             structure101Doc.getDocumentElement().normalize();
             pyneDoc.getDocumentElement().normalize();
 
+            // add dependencies
             addStructure101Dependencies(dependencyMap, toolPerformances, structure101Doc);
             addPyneDependencies(dependencyMap, toolPerformances, pyneDoc);
 
+            // compare dependencies
             compareDependencies(dependencyMap, toolPerformances);
+
+            // live happily ever after :)
         } catch(FileNotFoundException e) {
             System.err.println("Could not find file to open");
             e.printStackTrace();
@@ -87,6 +92,8 @@ public class Main {
 
         // evaluate the performance of each tool
         for(ToolPerformance performance : toolPerformances.values()) {
+            // TODO: refactor some of this for loop into methods?
+            
             // except the ideal tool, since we already know it would be perfect
             if(performance.getName().equals(TOOL_NAME.IDEAL)) continue;
 
@@ -254,11 +261,8 @@ public class Main {
                                         Map<TOOL_NAME, ToolPerformance> toolPerformances,
                                         String dependency, TOOL_NAME toolName, Boolean internal)
     {
-        // first create a new pkg that is recognized by "IDEAL"
-        // this is because the "IDEAL" tool is a theoretical tool that knows everything
-        Pkg pkg = new Pkg(dependency, internal, TOOL_NAME.IDEAL);
-        // then add the given tool to the list of tools that recognized this package
-        pkg.addRecognizedBy(toolName);
+        // create a new package with the given parameters in the dependencyMap
+        Pkg pkg = new Pkg(dependency, internal);
         dependencyMap.put(dependency, pkg);
 
         // and add this package to the list of found dependencies of the given tool and of the ideal tool
@@ -269,6 +273,7 @@ public class Main {
     /**
      * updates an existing dependency in the dependencyMap
      * and adds it to the list of found dependencies of the given tool
+     * @param dependencyMap the map to store the dependencies in
      * @param toolPerformances the map of tools to add the dependency to
      * @param dependency the name of the dependency
      * @param toolName the name of the tool that found it

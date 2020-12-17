@@ -32,18 +32,6 @@ public class ToolPerformance {
         return name;
     }
 
-    public int getMisses() {
-        return internalMissCount + externalMissCount;
-    }
-
-    public int getInternalMissCount() {
-        return internalMissCount;
-    }
-
-    public int getExternalMissCount() {
-        return externalMissCount;
-    }
-
     public Set<String> getHits() {
         Set<String> totalHits = new HashSet<>();
         totalHits.addAll(internalHits);
