@@ -36,4 +36,8 @@ public class Pkg {
     public void addRecognizedBy(Main.TOOL_NAME foundBy) {
         recognizedBy.put(foundBy, true);
     }
+
+    public String getBasicInfoString() {
+        return name + " (" + (internal ? "in" : "ex") + "ternal)";
+    }
 }
