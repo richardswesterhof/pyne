@@ -1,6 +1,10 @@
+import functionality.Comparator;
+import functionality.XMLHandler;
+import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -21,6 +25,10 @@ public class Main {
         try {
             File structure101Graph = new File(structure101Path);
             File pyneGraph = new File(pynePath);
+            // TODO: make this a parameter in CLI
+            File output = new File("./results/comparison-" + System.currentTimeMillis() + ".xml");
+            output.getParentFile().mkdirs();
+            output.createNewFile();
 
             // initialize comparator
             Comparator comparator = new Comparator(structure101Graph, pyneGraph).initXML();
@@ -29,7 +37,10 @@ public class Main {
             comparator.collectAllDependencies();
 
             // compare dependencies
-            comparator.compareDependencies();
+            Document doc = comparator.compareDependencies();
+
+            // output differences to xml file
+            XMLHandler.writeXML(doc, output);
 
             // live happily ever after :)
         } catch(FileNotFoundException e) {
@@ -40,6 +51,9 @@ public class Main {
             e.printStackTrace();
         } catch(SAXException | IOException e) {
             System.err.println("Something went wrong when parsing a file");
+            e.printStackTrace();
+        } catch(TransformerException e) {
+            System.err.println("Something went wrong when writing output");
             e.printStackTrace();
         }
     }

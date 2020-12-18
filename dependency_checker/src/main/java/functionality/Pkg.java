@@ -1,3 +1,5 @@
+package functionality;
+
 public class Pkg {
 
     private String name;

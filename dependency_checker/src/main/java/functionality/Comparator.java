@@ -1,17 +1,18 @@
+package functionality;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
+
+import static functionality.XMLHandler.*;
 
 public class Comparator {
 
@@ -52,7 +53,7 @@ public class Comparator {
      */
     public Comparator initXML() throws ParserConfigurationException, SAXException, IOException {
         // initialize the document trees representing the XML files
-        dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        dBuilder = XMLHandler.getDocumentBuilder();
         // parse files
         structure101Doc = dBuilder.parse(structure101File);
         pyneDoc = dBuilder.parse(pyneFile);
@@ -75,25 +76,57 @@ public class Comparator {
 
     /**
      * checks for each found dependency which tool was and wasn't able to find it, and reports the results
+     * @return a Document tree containing the results per tool
      */
-    public void compareDependencies() {
-
+    public Document compareDependencies() {
+        // store the ideal performance for reference
         ToolPerformance idealPerformance = toolPerformances.get(TOOL_NAME.IDEAL);
 
-        // print the total amount of dependencies for reference
-        System.out.println("Total unique dependencies found: " + idealPerformance.getHitCount());
+        // perform an ancient ritual to summon a List<String> from an Enum
+        List<String> toolNames = new ArrayList<>(Arrays.asList(Stream.of(TOOL_NAME.values()).map(TOOL_NAME::toString).toArray(String[]::new)));
+        // and make sure to remove the ideal tool, since it will be handled differently from normal tools
+        toolNames.remove(TOOL_NAME.IDEAL.toString());
 
-        System.out.println("Performance per tool:");
+        // get the template doc from the XMLHandler
+        Document doc = XMLHandler.initializeDoc(dBuilder, toolNames);
 
-        // evaluate the performance of each tool
-        for(ToolPerformance performance : toolPerformances.values()) {
-            // TODO: refactor some of this for loop into methods?
+        // get the two children of the root element
+        Node allDeps = doc.getElementsByTagName(XMLHandler.ALL_DEPS).item(0);
+        Node tools = doc.getElementsByTagName(XMLHandler.TOOLS).item(0);
 
-            // except the ideal tool, since we already know it would be perfect
-            if(performance.getName().equals(TOOL_NAME.IDEAL)) continue;
+        // set the count of total dependencies in the document
+        XMLHandler.setNodeAttribute(allDeps, COUNT, Integer.toString(idealPerformance.getHitCount()));
 
-            // get the missing dependencies from this tool by starting with all (ideal) dependencies
-            // and subtracting the actual found dependencies
+        // add all found dependencies to the list of dependencies
+        for(String dependencyName : idealPerformance.getHits()) {
+            Pkg dependency = dependencyMap.get(dependencyName);
+            allDeps.appendChild(XMLHandler.createDependency(doc, dependency.getName(), dependency.isInternal()));
+        }
+
+        NodeList toolNodes = tools.getChildNodes();
+        for(int i = 0; i < toolNodes.getLength(); i++) {
+            Node toolNode = toolNodes.item(i);
+            // get the performance of the tool that this node represents
+            ToolPerformance performance = toolPerformances.get(TOOL_NAME.valueOf(
+                    toolNode.getAttributes().getNamedItem(NAME).getTextContent()));
+
+            Node foundDeps = null, missedDeps = null;
+            NodeList childNodes = toolNode.getChildNodes();
+            for(int j = 0; j < childNodes.getLength(); j++) {
+                Node child = childNodes.item(j);
+                String nodeName = child.getNodeName();
+                // assign the correct variable based on tagname of the child
+                if(nodeName.equals(FOUND_DEPS)) foundDeps = child;
+                else if(nodeName.equals(MISSED_DEPS)) missedDeps = child;
+            }
+
+            // make sure these are not null before we proceed
+            assert foundDeps != null;
+            assert missedDeps != null;
+
+            // get the missing internal dependencies from this tool
+            // by starting with all (ideal) internal dependencies
+            // and subtracting the actual found internal dependencies
             Set<String> internalMissing = new HashSet<>(idealPerformance.getInternalHits());
             internalMissing.removeAll(performance.getInternalHits());
 
@@ -101,6 +134,12 @@ public class Comparator {
             Set<String> externalMissing = new HashSet<>(idealPerformance.getExternalHits());
             externalMissing.removeAll(performance.getExternalHits());
 
+            // add the found and missing dependencies to the tree
+            XMLHandler.addAllDependencies(doc, foundDeps, getDependenciesByNames(performance.getHits()));
+            XMLHandler.addAllDependencies(doc, missedDeps, getDependenciesByNames(internalMissing),
+                    getDependenciesByNames(externalMissing));
+
+            // calculate percentages
             float internalMissPercent = (float)internalMissing.size() /
                     idealPerformance.getInternalHitCount() * 100;
 
@@ -110,31 +149,18 @@ public class Comparator {
             float totalMissPercent = (float)(internalMissing.size() + externalMissing.size()) /
                     idealPerformance.getHitCount() * 100;
 
+            setNodeAttribute(foundDeps, COUNT, Integer.toString(performance.getHitCount()));
+            setNodeAttribute(foundDeps, PERCENTAGE_TOTAL, Float.toString(100 - totalMissPercent));
+            setNodeAttribute(foundDeps, PERCENTAGE_INTERNAL, Float.toString(100 - internalMissPercent));
+            setNodeAttribute(foundDeps, PERCENTAGE_EXTERNAL, Float.toString(100 - externalMissPercent));
 
-            // print the results
-            System.out.println(performance.getName());
-
-            // amount of internal (+ percentage of total internal)
-            System.out.println("\t" + internalMissing.size() + " internal dependencies missed (" +
-                    internalMissPercent + "% of total internal dependencies):");
-            for(String dep : internalMissing) {
-                System.out.println("\t\t" + dependencyMap.get(dep).getBasicInfoString());
-            }
-
-            // amount of external (+ percentage of total external)
-            System.out.println("\t" + externalMissing.size() + " external dependencies missed (" +
-                    externalMissPercent + "% of total external dependencies):");
-            for(String dep : externalMissing) {
-                System.out.println("\t\t" + dependencyMap.get(dep).getBasicInfoString());
-            }
-
-            // the total misses
-            System.out.println("\t" + (internalMissing.size() + externalMissing.size()) + " total dependencies missed (" +
-                    totalMissPercent + "% of total dependencies)");
-
-            // newline for readability
-            System.out.println();
+            setNodeAttribute(missedDeps, COUNT, Integer.toString(internalMissing.size() + externalMissing.size()));
+            setNodeAttribute(missedDeps, PERCENTAGE_TOTAL, Float.toString(totalMissPercent));
+            setNodeAttribute(missedDeps, PERCENTAGE_INTERNAL, Float.toString(internalMissPercent));
+            setNodeAttribute(missedDeps, PERCENTAGE_EXTERNAL, Float.toString(externalMissPercent));
         }
+
+        return doc;
     }
 
     /**
@@ -257,5 +283,13 @@ public class Comparator {
     private void updateExistingDependency(String dependency, TOOL_NAME toolName) {
         Pkg dep = dependencyMap.get(dependency);
         toolPerformances.get(toolName).addDepByPkg(dep);
+    }
+
+    private Set<Pkg> getDependenciesByNames(Set<String> names) {
+        Set<Pkg> dependencies = new HashSet<>();
+        for(String name : names) {
+            dependencies.add(dependencyMap.get(name));
+        }
+        return dependencies;
     }
 }

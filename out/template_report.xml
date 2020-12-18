@@ -1,0 +1,21 @@
+<xml>
+	<results>
+		<all_dependencies "total"=Integer>
+			<dependency "internal"=Boolean>name.of.dependency</dependency>
+			etc.
+		</all_dependencies>
+		<tools "count"=Integer>
+			<tool name=[TOOL_NAME]>
+				<found_dependencies "count"=Integer "percentage"=Float>
+					<dependency "internal"=Boolean>name.of.dependency</dependency>
+					etc.
+				</found_dependencies>
+				<missed_dependencies "count"=Integer "percentage"=Float>
+					<dependency "internal"=Boolean>name.of.dependency</dependency>
+					etc.
+				</missed_dependencies>
+			</tool>
+			etc.
+		</tools>
+	</results>
+</xml>
