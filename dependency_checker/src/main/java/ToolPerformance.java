@@ -3,13 +3,13 @@ import java.util.Set;
 
 public class ToolPerformance {
 
-    private Main.TOOL_NAME name;
+    private Comparator.TOOL_NAME name;
     private Set<String> internalHits;
     private Set<String> externalHits;
     private int internalMissCount = 0;
     private int externalMissCount = 0;
 
-    public ToolPerformance(Main.TOOL_NAME name) {
+    public ToolPerformance(Comparator.TOOL_NAME name) {
         this.name = name;
         internalHits = new HashSet<>();
         externalHits = new HashSet<>();
@@ -28,7 +28,7 @@ public class ToolPerformance {
         else addExternalRecognizedDep(pkg.getName());
     }
 
-    public Main.TOOL_NAME getName() {
+    public Comparator.TOOL_NAME getName() {
         return name;
     }
 
