@@ -5,6 +5,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.swing.text.html.parser.Parser;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
@@ -179,21 +180,22 @@ public class Comparator {
 
             //remove the ones that end with *, these are parent packages and we only want leaves
             if(!pkg.endsWith("*")) {
-                Boolean internal = false;
+                // the most elegant way in the whole world to determine whether this is an internal package or not
+                // external packages are descendants of a cell with name "(unknown)"
+                // you might expect all descendant names to start with "(unknown)" as well then
+                // but this is not true for one whole cell, so we have to resort to this beauty :)
+                Boolean isInternal = !cell.getParentNode().getParentNode().getParentNode().getAttributes()
+                        .getNamedItem("name").getTextContent().equals("(unknown)");
 
-                // structure101 prepends internal packages with some form of "tajo-",
-                // in that case remove the first part (everything until and including the first .)
-                // TODO: make the program automatically detect this
-                //  to remove the one hardcoded reference to Tajo here
-                if(pkg.startsWith("tajo")) {
-                    internal = true;
+                // Structure101 prepends internal package patterns with the project name, so we remove that
+                if(isInternal) {
                     pkg = pkg.substring(pkg.indexOf('.')+1);
                 }
 
                 //get rid of the last part of the pattern (.?)
                 pkg = pkg.substring(0, pkg.length()-2);
 
-                foundDependency(pkg, TOOL_NAME.STRUCTURE101, internal);
+                foundDependency(pkg, TOOL_NAME.STRUCTURE101, isInternal);
             }
         }
     }
