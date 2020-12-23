@@ -201,6 +201,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      *
      * @param clazz The class being processed
      */
+    //TODO: constructors are not processed
     private List<CtType> getClassReferences(CtType clazz) {
         List<CtType> references = new ArrayList<>();
 

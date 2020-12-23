@@ -107,8 +107,8 @@ public class Comparator {
         for(int i = 0; i < toolNodes.getLength(); i++) {
             Node toolNode = toolNodes.item(i);
             // get the performance of the tool that this node represents
-            ToolPerformance performance = toolPerformances.get(TOOL_NAME.valueOf(
-                    toolNode.getAttributes().getNamedItem(NAME).getTextContent()));
+            TOOL_NAME ToolName = TOOL_NAME.valueOf(toolNode.getAttributes().getNamedItem(NAME).getTextContent());
+            ToolPerformance performance = toolPerformances.get(ToolName);
 
             Node foundDeps = null, missedDeps = null;
             NodeList childNodes = toolNode.getChildNodes();
@@ -149,15 +149,27 @@ public class Comparator {
             float totalMissPercent = (float)(internalMissing.size() + externalMissing.size()) /
                     idealPerformance.getHitCount() * 100;
 
-            setNodeAttribute(foundDeps, COUNT, Integer.toString(performance.getHitCount()));
-            setNodeAttribute(foundDeps, PERCENTAGE_TOTAL, Float.toString(100 - totalMissPercent));
-            setNodeAttribute(foundDeps, PERCENTAGE_INTERNAL, Float.toString(100 - internalMissPercent));
-            setNodeAttribute(foundDeps, PERCENTAGE_EXTERNAL, Float.toString(100 - externalMissPercent));
+            String fCount = Integer.toString(performance.getHitCount());
+            String fPercentageTotal = Float.toString(100 - totalMissPercent);
+            String fPercentageInternal = Float.toString(100 - internalMissPercent);
+            String fPercentageExternal = Float.toString(100 - externalMissPercent);
+            System.out.println("\n"+fCount+" found by "+ToolName+". "+fPercentageTotal+"% of total. "+fPercentageInternal+"% of internal. "+fPercentageExternal+"% of external");
 
-            setNodeAttribute(missedDeps, COUNT, Integer.toString(internalMissing.size() + externalMissing.size()));
-            setNodeAttribute(missedDeps, PERCENTAGE_TOTAL, Float.toString(totalMissPercent));
-            setNodeAttribute(missedDeps, PERCENTAGE_INTERNAL, Float.toString(internalMissPercent));
-            setNodeAttribute(missedDeps, PERCENTAGE_EXTERNAL, Float.toString(externalMissPercent));
+            String mCount = Integer.toString(internalMissing.size() + externalMissing.size());
+            String mPercentageTotal = Float.toString(totalMissPercent);
+            String mPercentageInternal = Float.toString(internalMissPercent);
+            String mPercentageExternal = Float.toString(externalMissPercent);
+            System.out.println(mCount+" not found by "+ToolName+". "+mPercentageTotal+"% of total. "+mPercentageInternal+"% of internal. "+mPercentageExternal+"% of external\n");
+
+            setNodeAttribute(foundDeps, COUNT, fCount);
+            setNodeAttribute(foundDeps, PERCENTAGE_TOTAL, fPercentageTotal);
+            setNodeAttribute(foundDeps, PERCENTAGE_INTERNAL, fPercentageInternal);
+            setNodeAttribute(foundDeps, PERCENTAGE_EXTERNAL, fPercentageExternal);
+
+            setNodeAttribute(missedDeps, COUNT, mCount);
+            setNodeAttribute(missedDeps, PERCENTAGE_TOTAL, mPercentageTotal);
+            setNodeAttribute(missedDeps, PERCENTAGE_INTERNAL, mPercentageInternal);
+            setNodeAttribute(missedDeps, PERCENTAGE_EXTERNAL, mPercentageExternal);
         }
 
         return doc;
