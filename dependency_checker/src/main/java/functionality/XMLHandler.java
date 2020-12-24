@@ -20,12 +20,16 @@ public class XMLHandler {
 
     // final String declarations
     public static final String ALL_DEPS = "allDependencies";
+    public static final String ALL_PKGS = "allPackages";
     public static final String COUNT = "count";
     public static final String DEPENDENCY = "dependency";
+    public static final String FOUND_PKGS = "foundPackages";
     public static final String FOUND_DEPS = "foundDependencies";
     public static final String INTERNAL = "internal";
+    public static final String MISSED_PKGS = "missedPackages";
     public static final String MISSED_DEPS = "missedDependencies";
     public static final String NAME = "name";
+    public static final String PACKAGE = "package";
     public static final String PERCENTAGE_TOTAL = "percentageTotal";
     public static final String PERCENTAGE_INTERNAL = "percentageInternal";
     public static final String PERCENTAGE_EXTERNAL = "percentageExternal";
@@ -50,10 +54,10 @@ public class XMLHandler {
         // create root element in results
         Element root = template.createElement(RESULTS);
 
-        // create allDependencies Element in root
-        Element allDeps = template.createElement(ALL_DEPS);
-        allDeps.setAttribute(COUNT, UNINITIALIZED_INT);
-        root.appendChild(allDeps);
+        // create allPackages Element in root
+        Element allPkgs = template.createElement(ALL_PKGS);
+        allPkgs.setAttribute(COUNT, UNINITIALIZED_INT);
+        root.appendChild(allPkgs);
 
         // create tools Element in root
         Element tools = template.createElement(TOOLS);
@@ -65,21 +69,21 @@ public class XMLHandler {
             Element tool = template.createElement(TOOL);
             tool.setAttribute(NAME, toolName);
 
-            // create the list of found dependencies
-            Element foundDeps = template.createElement(FOUND_DEPS);
-            foundDeps.setAttribute(COUNT, UNINITIALIZED_INT);
-            foundDeps.setAttribute(PERCENTAGE_TOTAL, UNINITIALIZED_INT);
-            foundDeps.setAttribute(PERCENTAGE_INTERNAL, UNINITIALIZED_INT);
-            foundDeps.setAttribute(PERCENTAGE_EXTERNAL, UNINITIALIZED_INT);
-            tool.appendChild(foundDeps);
+            // create the list of found packages
+            Element foundPkgs = template.createElement(FOUND_PKGS);
+            foundPkgs.setAttribute(COUNT, UNINITIALIZED_INT);
+            foundPkgs.setAttribute(PERCENTAGE_TOTAL, UNINITIALIZED_INT);
+            foundPkgs.setAttribute(PERCENTAGE_INTERNAL, UNINITIALIZED_INT);
+            foundPkgs.setAttribute(PERCENTAGE_EXTERNAL, UNINITIALIZED_INT);
+            tool.appendChild(foundPkgs);
 
-            // create the list of missed dependencies
-            Element missedDeps = template.createElement(MISSED_DEPS);
-            missedDeps.setAttribute(COUNT, UNINITIALIZED_INT);
-            missedDeps.setAttribute(PERCENTAGE_TOTAL, UNINITIALIZED_INT);
-            missedDeps.setAttribute(PERCENTAGE_INTERNAL, UNINITIALIZED_INT);
-            missedDeps.setAttribute(PERCENTAGE_EXTERNAL, UNINITIALIZED_INT);
-            tool.appendChild(missedDeps);
+            // create the list of missed packages
+            Element missedPkgs = template.createElement(MISSED_PKGS);
+            missedPkgs.setAttribute(COUNT, UNINITIALIZED_INT);
+            missedPkgs.setAttribute(PERCENTAGE_TOTAL, UNINITIALIZED_INT);
+            missedPkgs.setAttribute(PERCENTAGE_INTERNAL, UNINITIALIZED_INT);
+            missedPkgs.setAttribute(PERCENTAGE_EXTERNAL, UNINITIALIZED_INT);
+            tool.appendChild(missedPkgs);
 
             tools.appendChild(tool);
         }
@@ -88,27 +92,27 @@ public class XMLHandler {
         return template;
     }
 
-    public static Element createDependency(Document doc, Pkg dependency) {
-        return createDependency(doc, dependency.getName(), dependency.isInternal());
+    public static Element createPackage(Document doc, Pkg pkg) {
+        return createPackage(doc, pkg.getName(), pkg.isInternal());
     }
 
-    public static Element createDependency(Document doc, String dependency, Boolean internal) {
-        Element dep = doc.createElement(DEPENDENCY);
-        dep.setAttribute(INTERNAL, internal.toString());
-        dep.appendChild(doc.createTextNode(dependency));
+    public static Element createPackage(Document doc, String pkg, Boolean internal) {
+        Element pack = doc.createElement(PACKAGE);
+        pack.setAttribute(INTERNAL, internal.toString());
+        pack.appendChild(doc.createTextNode(pkg));
 
-        return dep;
+        return pack;
     }
 
-    public static void addAllDependencies(Document doc, Node depList, Set<Pkg> dependencies) {
-        for(Pkg dep : dependencies) {
-            depList.appendChild(createDependency(doc, dep));
+    public static void addAllPackages(Document doc, Node pkgListNode, Set<Pkg> packages) {
+        for(Pkg pkg : packages) {
+            pkgListNode.appendChild(createPackage(doc, pkg));
         }
     }
 
-    public static void addAllDependencies(Document doc, Node depList, Set<Pkg> internalDeps, Set<Pkg> externalDeps) {
-        addAllDependencies(doc, depList, internalDeps);
-        addAllDependencies(doc, depList, externalDeps);
+    public static void addAllPackages(Document doc, Node pkgListNode, Set<Pkg> internalPkgs, Set<Pkg> externalPkgs) {
+        addAllPackages(doc, pkgListNode, internalPkgs);
+        addAllPackages(doc, pkgListNode, externalPkgs);
     }
 
     public static void setNodeAttribute(Node node, String attribute, String value) {

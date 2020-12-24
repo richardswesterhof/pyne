@@ -17,17 +17,17 @@ public class ToolPerformance {
         externalHits = new HashSet<>();
     }
 
-    public void addInternalRecognizedDep(String dependency) {
-        internalHits.add(dependency);
+    public void addInternalRecognizedPackage(String pkg) {
+        internalHits.add(pkg);
     }
 
-    public void addExternalRecognizedDep(String dependency) {
-        externalHits.add(dependency);
+    public void addExternalRecognizedPackage(String pkg) {
+        externalHits.add(pkg);
     }
 
-    public void addDepByPkg(Pkg pkg) {
-        if(pkg.isInternal()) addInternalRecognizedDep(pkg.getName());
-        else addExternalRecognizedDep(pkg.getName());
+    public void addPkg(Pkg pkg) {
+        if(pkg.isInternal()) addInternalRecognizedPackage(pkg.getName());
+        else addExternalRecognizedPackage(pkg.getName());
     }
 
     public Comparator.TOOL_NAME getName() {

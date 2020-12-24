@@ -33,11 +33,11 @@ public class Main {
             // initialize comparator
             Comparator comparator = new Comparator(structure101Graph, pyneGraph).initXML();
 
-            // collect dependencies
-            comparator.collectAllDependencies();
+            // collect packages
+            comparator.collectAllPackages();
 
-            // compare dependencies
-            Document doc = comparator.compareDependencies();
+            // compare packages
+            Document doc = comparator.comparePackages();
 
             // output differences to xml file
             XMLHandler.writeXML(doc, output);
