@@ -92,16 +92,16 @@ public class Comparator {
         Document doc = XMLHandler.initializeDoc(dBuilder, toolNames);
 
         // get the two children of the root element
-        Node allDeps = doc.getElementsByTagName(XMLHandler.ALL_PKGS).item(0);
+        Node allPkgs = doc.getElementsByTagName(XMLHandler.ALL_PKGS).item(0);
         Node tools = doc.getElementsByTagName(XMLHandler.TOOLS).item(0);
 
-        // set the count of total dependencies in the document
-        XMLHandler.setNodeAttribute(allDeps, COUNT, Integer.toString(idealPerformance.getHitCount()));
+        // set the count of total packages in the document
+        XMLHandler.setNodeAttribute(allPkgs, COUNT, Integer.toString(idealPerformance.getHitCount()));
 
-        // add all found dependencies to the list of dependencies
-        for(String dependencyName : idealPerformance.getHits()) {
-            Pkg dependency = pkgMap.get(dependencyName);
-            allDeps.appendChild(XMLHandler.createPackage(doc, dependency.getName(), dependency.isInternal()));
+        // add all found packages to the list of packages
+        for(String packageName : idealPerformance.getHits()) {
+            Pkg pkg = pkgMap.get(packageName);
+            allPkgs.appendChild(XMLHandler.createPackage(doc, pkg.getName(), pkg.isInternal()));
         }
 
         NodeList toolNodes = tools.getChildNodes();
@@ -111,34 +111,34 @@ public class Comparator {
             TOOL_NAME ToolName = TOOL_NAME.valueOf(toolNode.getAttributes().getNamedItem(NAME).getTextContent());
             ToolPerformance performance = toolPerformances.get(ToolName);
 
-            Node foundDeps = null, missedDeps = null;
+            Node foundPkgs = null, missedPkgs = null;
             NodeList childNodes = toolNode.getChildNodes();
             for(int j = 0; j < childNodes.getLength(); j++) {
                 Node child = childNodes.item(j);
                 String nodeName = child.getNodeName();
                 // assign the correct variable based on tagname of the child
-                if(nodeName.equals(FOUND_PKGS)) foundDeps = child;
-                else if(nodeName.equals(MISSED_PKGS)) missedDeps = child;
+                if(nodeName.equals(FOUND_PKGS)) foundPkgs = child;
+                else if(nodeName.equals(MISSED_PKGS)) missedPkgs = child;
             }
 
             // make sure these are not null before we proceed
-            assert foundDeps != null;
-            assert missedDeps != null;
+            assert foundPkgs != null;
+            assert missedPkgs != null;
 
-            // get the missing internal dependencies from this tool
-            // by starting with all (ideal) internal dependencies
-            // and subtracting the actual found internal dependencies
+            // get the missing internal packages from this tool
+            // by starting with all (ideal) internal packages
+            // and subtracting the actual found internal packages
             Set<String> internalMissing = new HashSet<>(idealPerformance.getInternalHits());
             internalMissing.removeAll(performance.getInternalHits());
 
-            // same for external dependencies
+            // same for external packages
             Set<String> externalMissing = new HashSet<>(idealPerformance.getExternalHits());
             externalMissing.removeAll(performance.getExternalHits());
 
-            // add the found and missing dependencies to the tree
-            XMLHandler.addAllPackages(doc, foundDeps, getDependenciesByNames(performance.getHits()));
-            XMLHandler.addAllPackages(doc, missedDeps, getDependenciesByNames(internalMissing),
-                    getDependenciesByNames(externalMissing));
+            // add the found and missing packages to the tree
+            XMLHandler.addAllPackages(doc, foundPkgs, getPackagesByNames(performance.getHits()));
+            XMLHandler.addAllPackages(doc, missedPkgs, getPackagesByNames(internalMissing),
+                    getPackagesByNames(externalMissing));
 
             // calculate percentages
             float internalMissPercent = (float)internalMissing.size() /
@@ -162,15 +162,15 @@ public class Comparator {
             String mPercentageExternal = Float.toString(externalMissPercent);
             System.out.println(mCount+" not found by "+ToolName+". "+mPercentageTotal+"% of total. "+mPercentageInternal+"% of internal. "+mPercentageExternal+"% of external\n");
 
-            setNodeAttribute(foundDeps, COUNT, fCount);
-            setNodeAttribute(foundDeps, PERCENTAGE_TOTAL, fPercentageTotal);
-            setNodeAttribute(foundDeps, PERCENTAGE_INTERNAL, fPercentageInternal);
-            setNodeAttribute(foundDeps, PERCENTAGE_EXTERNAL, fPercentageExternal);
+            setNodeAttribute(foundPkgs, COUNT, fCount);
+            setNodeAttribute(foundPkgs, PERCENTAGE_TOTAL, fPercentageTotal);
+            setNodeAttribute(foundPkgs, PERCENTAGE_INTERNAL, fPercentageInternal);
+            setNodeAttribute(foundPkgs, PERCENTAGE_EXTERNAL, fPercentageExternal);
 
-            setNodeAttribute(missedDeps, COUNT, mCount);
-            setNodeAttribute(missedDeps, PERCENTAGE_TOTAL, mPercentageTotal);
-            setNodeAttribute(missedDeps, PERCENTAGE_INTERNAL, mPercentageInternal);
-            setNodeAttribute(missedDeps, PERCENTAGE_EXTERNAL, mPercentageExternal);
+            setNodeAttribute(missedPkgs, COUNT, mCount);
+            setNodeAttribute(missedPkgs, PERCENTAGE_TOTAL, mPercentageTotal);
+            setNodeAttribute(missedPkgs, PERCENTAGE_INTERNAL, mPercentageInternal);
+            setNodeAttribute(missedPkgs, PERCENTAGE_EXTERNAL, mPercentageExternal);
         }
 
         return doc;
@@ -279,31 +279,31 @@ public class Comparator {
      * @param internal whether or not this is an internal package
      */
     private void addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal) {
-        // create a new package with the given parameters in the dependencyMap
+        // create a new package with the given parameters in the packageMap
         Pkg pack = new Pkg(pkg, internal);
         pkgMap.put(pkg, pack);
 
-        // and add this package to the list of found dependencies of the given tool and of the ideal tool
+        // and add this package to the list of found packages of the given tool and of the ideal tool
         toolPerformances.get(toolName).addPkg(pack);
         toolPerformances.get(TOOL_NAME.IDEAL).addPkg(pack);
     }
 
     /**
-     * updates an existing dependency in the dependencyMap
-     * and adds it to the list of found dependencies of the given tool
-     * @param dependency the name of the dependency
+     * updates an existing pkg in the packageMap
+     * and adds it to the list of found packages of the given tool
+     * @param pkg the name of the pkg
      * @param toolName the name of the tool that found it
      */
-    private void updateExistingPackage(String dependency, TOOL_NAME toolName) {
-        Pkg dep = pkgMap.get(dependency);
-        toolPerformances.get(toolName).addPkg(dep);
+    private void updateExistingPackage(String pkg, TOOL_NAME toolName) {
+        Pkg pack = pkgMap.get(pkg);
+        toolPerformances.get(toolName).addPkg(pack);
     }
 
-    private Set<Pkg> getDependenciesByNames(Set<String> names) {
-        Set<Pkg> dependencies = new HashSet<>();
+    private Set<Pkg> getPackagesByNames(Set<String> names) {
+        Set<Pkg> pkgs = new HashSet<>();
         for(String name : names) {
-            dependencies.add(pkgMap.get(name));
+            pkgs.add(pkgMap.get(name));
         }
-        return dependencies;
+        return pkgs;
     }
 }
