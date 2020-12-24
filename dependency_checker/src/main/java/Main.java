@@ -31,18 +31,23 @@ public class Main {
             output.createNewFile();
 
             // initialize comparator
+            System.out.println("Initializing comparator");
             Comparator comparator = new Comparator(structure101Graph, pyneGraph).initXML();
 
             // collect packages
+			System.out.println("Collecting packages");
             comparator.collectAllPackages();
 
             // compare packages
+			System.out.println("Comparing packages");
             Document doc = comparator.comparePackages();
 
             // output differences to xml file
+            System.out.println("Writing to output file");
             XMLHandler.writeXML(doc, output);
 
             // live happily ever after :)
+            System.out.println("Done!");
         } catch(FileNotFoundException e) {
             System.err.println("Could not find file to open");
             e.printStackTrace();
