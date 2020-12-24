@@ -28,6 +28,8 @@ public class Comparator {
     private Map<String, Pkg> pkgMap = new HashMap<>();
     private Map<String, Pkg> depMap = new HashMap<>();
 
+    private IDProvider idProvider = new IDProvider();
+
     File structure101File;
     File pyneFile;
     Document structure101Doc;
@@ -101,7 +103,7 @@ public class Comparator {
         // add all found packages to the list of packages
         for(String packageName : idealPerformance.getHits()) {
             Pkg pkg = pkgMap.get(packageName);
-            allPkgs.appendChild(XMLHandler.createPackage(doc, pkg.getName(), pkg.isInternal()));
+            allPkgs.appendChild(XMLHandler.createPackage(doc, pkg));
         }
 
         NodeList toolNodes = tools.getChildNodes();
@@ -268,7 +270,7 @@ public class Comparator {
         if(pkgMap.containsKey(pkg))
             updateExistingPackage(pkg, toolName);
         else
-            addNewPackage(pkg, toolName, internal);
+            addNewPackage(pkg, toolName, internal, -1);
     }
 
     /**
@@ -277,10 +279,13 @@ public class Comparator {
      * @param pkg the name of the pkg
      * @param toolName the name of the tool that found it
      * @param internal whether or not this is an internal package
+     * @param id the id of the package that was assigned by the tool
      */
-    private void addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal) {
+    private void addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal, Integer id) {
         // create a new package with the given parameters in the packageMap
         Pkg pack = new Pkg(pkg, internal);
+        pack.setToolId(toolName, id);
+        pack.setToolId(TOOL_NAME.IDEAL, idProvider.getNextId());
         pkgMap.put(pkg, pack);
 
         // and add this package to the list of found packages of the given tool and of the ideal tool

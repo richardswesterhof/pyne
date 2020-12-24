@@ -25,6 +25,7 @@ public class XMLHandler {
     public static final String DEPENDENCY = "dependency";
     public static final String FOUND_PKGS = "foundPackages";
     public static final String FOUND_DEPS = "foundDependencies";
+    public static final String ID = "id";
     public static final String INTERNAL = "internal";
     public static final String MISSED_PKGS = "missedPackages";
     public static final String MISSED_DEPS = "missedDependencies";
@@ -93,11 +94,12 @@ public class XMLHandler {
     }
 
     public static Element createPackage(Document doc, Pkg pkg) {
-        return createPackage(doc, pkg.getName(), pkg.isInternal());
+        return createPackage(doc, pkg.getName(), pkg.isInternal(), pkg.getToolId(Comparator.TOOL_NAME.IDEAL));
     }
 
-    public static Element createPackage(Document doc, String pkg, Boolean internal) {
+    private static Element createPackage(Document doc, String pkg, Boolean internal, Integer id) {
         Element pack = doc.createElement(PACKAGE);
+        pack.setAttribute(ID, id.toString());
         pack.setAttribute(INTERNAL, internal.toString());
         pack.appendChild(doc.createTextNode(pkg));
 
