@@ -13,17 +13,17 @@ public class Main {
 
     public static void main(String[] args) {
         if(args.length < 2) {
-            System.err.println("Must specify the paths of the Structure101 xml file and the Pyne graphml file");
+            System.err.println("Must specify the paths of the Structure101 csv file and the Pyne graphml file");
             System.err.println("Example: java -jar dependency_checker.jar " +
-                    "\"../graphs/tajo_dependencies_by_structure101.xml\" " +
-                    "\"../graphs/tajo_dependencies_by_pyne.graphml\" ");
+                    "\"../graph-files/tajo_dependencies_by_structure101.csv\" " +
+                    "\"../graph-files/tajo_dependencies_by_pyne.graphml\" ");
             System.exit(1);
         }
         String structure101Path = args[0];
         String pynePath = args[1];
 
         try {
-            File structure101Graph = new File(structure101Path);
+            File structure101Matrix = new File(structure101Path);
             File pyneGraph = new File(pynePath);
             // TODO: make this a parameter in CLI
             File output = new File("./results/comparison-" + System.currentTimeMillis() + ".xml");
@@ -32,7 +32,7 @@ public class Main {
 
             // initialize comparator
             System.out.println("Initializing comparator");
-            Comparator comparator = new Comparator(structure101Graph, pyneGraph).initXML();
+            Comparator comparator = new Comparator(structure101Matrix, pyneGraph).importFileData();
 
             // collect packages
 			System.out.println("Collecting packages");
@@ -40,7 +40,7 @@ public class Main {
 
             // compare packages
 			System.out.println("Comparing packages");
-            Document doc = comparator.comparePackages();
+            Document doc = comparator.compareResults();
 
             // output differences to xml file
             System.out.println("Writing to output file");

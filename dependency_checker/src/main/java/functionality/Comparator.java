@@ -1,5 +1,6 @@
 package functionality;
 
+import com.opencsv.CSVReader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -8,6 +9,7 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Stream;
@@ -24,54 +26,73 @@ public class Comparator {
         PYNE
     }
 
-    private Map<TOOL_NAME, ToolPerformance> toolPerformances = new HashMap<>();
     private Map<String, Pkg> pkgMap = new HashMap<>();
-    private Map<String, Pkg> depMap = new HashMap<>();
+    private Set<Dep> depSet = new HashSet<>();
 
     private IDProvider idProvider = new IDProvider();
 
     File structure101File;
     File pyneFile;
-    Document structure101Doc;
+    List<List<String>> structure101Matrix;
     Document pyneDoc;
+
+    private static final int PKG_NAME_INDEX = 0;
+
 
     DocumentBuilder dBuilder;
 
     public Comparator(File structure101File, File pyneFile) {
         this.structure101File = structure101File;
         this.pyneFile = pyneFile;
-
-        // initialize tool performances
-        for (TOOL_NAME tool : TOOL_NAME.values()) {
-            toolPerformances.put(tool, new ToolPerformance(tool));
-        }
     }
 
     /**
-     * inits the xml related properties of this class
+     * imports the data from the given files in the constructor into datastructures in this class
      * @return this, to allow it to be chained right after the constructor call
      * @throws ParserConfigurationException
      * @throws SAXException
      * @throws IOException
      */
-    public Comparator initXML() throws ParserConfigurationException, SAXException, IOException {
-        // initialize the document trees representing the XML files
-        dBuilder = XMLHandler.getDocumentBuilder();
-        // parse files
-        structure101Doc = dBuilder.parse(structure101File);
-        pyneDoc = dBuilder.parse(pyneFile);
-        // sanitize trees
-        structure101Doc.getDocumentElement().normalize();
-        pyneDoc.getDocumentElement().normalize();
+    public Comparator importFileData() throws ParserConfigurationException, SAXException, IOException {
+        importPyneData();
+        importStructure101Data();
 
         return this;
+    }
+
+    /**
+     * imports structure101s data from the csv file
+     * @throws IOException
+     */
+    private void importStructure101Data() throws IOException {
+        // read csv file
+        structure101Matrix = new ArrayList<>();
+        CSVReader csvReader = new CSVReader(new FileReader(structure101File));
+        String[] values = null;
+        // read all lines, and get the values split on commas already
+        while((values = csvReader.readNext()) != null) {
+            List<String> trimmed = new ArrayList<>(Arrays.asList(values));
+            // the reason we drop the first element is because
+            // 1. it only contains the index of the row, which we can easily deduce
+            // 2. if we remove the first column, the indices in the headers match up with the actual indices in the List
+            trimmed.remove(0);
+            structure101Matrix.add(trimmed);
+        }
+    }
+
+    private void importPyneData() throws ParserConfigurationException, SAXException, IOException {
+        dBuilder = XMLHandler.getDocumentBuilder();
+        // parse file
+        pyneDoc = dBuilder.parse(pyneFile);
+        // sanitize tree
+        pyneDoc.getDocumentElement().normalize();
     }
 
     /**
      * collects the packages for all tools
      */
     public void collectAllPackages() {
-        addStructure101Packages(structure101Doc);
+        addStructure101Packages(structure101Matrix);
         addPynePackages(pyneDoc);
         // this is where one would add calls to other tool specific methods
         // in case a new tool joins the comparison
@@ -81,98 +102,81 @@ public class Comparator {
      * checks for each found package which tool was and wasn't able to find it, and reports the results
      * @return a Document tree containing the results per tool
      */
-    public Document comparePackages() {
-        // store the ideal performance for reference
-        ToolPerformance idealPerformance = toolPerformances.get(TOOL_NAME.IDEAL);
-
+    public Document compareResults() {
         // perform an ancient ritual to summon a List<String> from an Enum
         List<String> toolNames = new ArrayList<>(Arrays.asList(Stream.of(TOOL_NAME.values()).map(TOOL_NAME::toString).toArray(String[]::new)));
         // and make sure to remove the ideal tool, since it will be handled differently from normal tools
         toolNames.remove(TOOL_NAME.IDEAL.toString());
 
         // get the template doc from the XMLHandler
-        Document doc = XMLHandler.initializeDoc(dBuilder, toolNames);
+        Document doc = initializeDoc(dBuilder, toolNames);
 
-        // get the two children of the root element
-        Node allPkgs = doc.getElementsByTagName(XMLHandler.ALL_PKGS).item(0);
-        Node tools = doc.getElementsByTagName(XMLHandler.TOOLS).item(0);
+        // get the three children of the root element
+        Node allDeps = doc.getElementsByTagName(ALL_DEPS).item(0);
+        Node allPkgs = doc.getElementsByTagName(ALL_PKGS).item(0);
+        Node tools = doc.getElementsByTagName(TOOLS).item(0);
 
-        // set the count of total packages in the document
-        XMLHandler.setNodeAttribute(allPkgs, COUNT, Integer.toString(idealPerformance.getHitCount()));
+        // set the count of total packages and dependencies in the document
+        setNodeAttribute(allPkgs, COUNT, Integer.toString(pkgMap.size()));
+        setNodeAttribute(allDeps, COUNT, Integer.toString(depSet.size()));
 
-        // add all found packages to the list of packages
-        for(String packageName : idealPerformance.getHits()) {
-            Pkg pkg = pkgMap.get(packageName);
-            allPkgs.appendChild(XMLHandler.createPackage(doc, pkg));
-        }
+        Map<TOOL_NAME, Node> toolNodeMap = new HashMap<>();
 
         NodeList toolNodes = tools.getChildNodes();
         for(int i = 0; i < toolNodes.getLength(); i++) {
-            Node toolNode = toolNodes.item(i);
-            // get the performance of the tool that this node represents
-            TOOL_NAME ToolName = TOOL_NAME.valueOf(toolNode.getAttributes().getNamedItem(NAME).getTextContent());
-            ToolPerformance performance = toolPerformances.get(ToolName);
+            Node node = toolNodes.item(i);
+            // get the TOOL_NAME from the name of the node
+            TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+            toolNodeMap.put(tool, node);
+        }
 
-            Node foundPkgs = null, missedPkgs = null;
-            NodeList childNodes = toolNode.getChildNodes();
-            for(int j = 0; j < childNodes.getLength(); j++) {
-                Node child = childNodes.item(j);
-                String nodeName = child.getNodeName();
-                // assign the correct variable based on tagname of the child
-                if(nodeName.equals(FOUND_PKGS)) foundPkgs = child;
-                else if(nodeName.equals(MISSED_PKGS)) missedPkgs = child;
+        // check which tools found which packages
+        for(Pkg pkg : pkgMap.values()) {
+            // first add this package to the list of all packages
+            allPkgs.appendChild(createPackage(doc, pkg));
+
+            // check for each tool if it was found this package
+            for(Node node : toolNodeMap.values()) {
+                NodeList childNodes = node.getChildNodes();
+                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+
+                for(int i = 0; i < childNodes.getLength(); i++) {
+                    Node child = childNodes.item(i);
+                    if((pkg.wasFoundBy(tool) && child.getNodeName().equals(FOUND_PKGS)) ||
+                            (!pkg.wasFoundBy(tool) && child.getNodeName().equals(MISSED_PKGS)))
+                    {
+                        // increase the old counter by 1
+                        int oldCount = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
+                        String ternal = pkg.isInternal() ? COUNT_INTERNAL : COUNT_EXTERNAL;
+                        int ternalCount = Integer.parseInt(child.getAttributes().getNamedItem(ternal).getTextContent());
+                        setNodeAttribute(child, COUNT, Integer.toString(oldCount + 1));
+                        setNodeAttribute(child, ternal, Integer.toString(ternalCount + 1));
+                        child.appendChild(createPackage(doc, pkg));
+                    }
+                }
             }
+        }
 
-            // make sure these are not null before we proceed
-            assert foundPkgs != null;
-            assert missedPkgs != null;
+        // same for found dependencies
+        for(Dep dep : depSet) {
+            allDeps.appendChild(createDependency(doc, dep));
 
-            // get the missing internal packages from this tool
-            // by starting with all (ideal) internal packages
-            // and subtracting the actual found internal packages
-            Set<String> internalMissing = new HashSet<>(idealPerformance.getInternalHits());
-            internalMissing.removeAll(performance.getInternalHits());
-
-            // same for external packages
-            Set<String> externalMissing = new HashSet<>(idealPerformance.getExternalHits());
-            externalMissing.removeAll(performance.getExternalHits());
-
-            // add the found and missing packages to the tree
-            XMLHandler.addAllPackages(doc, foundPkgs, getPackagesByNames(performance.getHits()));
-            XMLHandler.addAllPackages(doc, missedPkgs, getPackagesByNames(internalMissing),
-                    getPackagesByNames(externalMissing));
-
-            // calculate percentages
-            float internalMissPercent = (float)internalMissing.size() /
-                    idealPerformance.getInternalHitCount() * 100;
-
-            float externalMissPercent = (float)externalMissing.size() /
-                    idealPerformance.getExternalHitCount() * 100;
-
-            float totalMissPercent = (float)(internalMissing.size() + externalMissing.size()) /
-                    idealPerformance.getHitCount() * 100;
-
-            String fCount = Integer.toString(performance.getHitCount());
-            String fPercentageTotal = Float.toString(100 - totalMissPercent);
-            String fPercentageInternal = Float.toString(100 - internalMissPercent);
-            String fPercentageExternal = Float.toString(100 - externalMissPercent);
-            System.out.println("\n"+fCount+" found by "+ToolName+". "+fPercentageTotal+"% of total. "+fPercentageInternal+"% of internal. "+fPercentageExternal+"% of external");
-
-            String mCount = Integer.toString(internalMissing.size() + externalMissing.size());
-            String mPercentageTotal = Float.toString(totalMissPercent);
-            String mPercentageInternal = Float.toString(internalMissPercent);
-            String mPercentageExternal = Float.toString(externalMissPercent);
-            System.out.println(mCount+" not found by "+ToolName+". "+mPercentageTotal+"% of total. "+mPercentageInternal+"% of internal. "+mPercentageExternal+"% of external\n");
-
-            setNodeAttribute(foundPkgs, COUNT, fCount);
-            setNodeAttribute(foundPkgs, PERCENTAGE_TOTAL, fPercentageTotal);
-            setNodeAttribute(foundPkgs, PERCENTAGE_INTERNAL, fPercentageInternal);
-            setNodeAttribute(foundPkgs, PERCENTAGE_EXTERNAL, fPercentageExternal);
-
-            setNodeAttribute(missedPkgs, COUNT, mCount);
-            setNodeAttribute(missedPkgs, PERCENTAGE_TOTAL, mPercentageTotal);
-            setNodeAttribute(missedPkgs, PERCENTAGE_INTERNAL, mPercentageInternal);
-            setNodeAttribute(missedPkgs, PERCENTAGE_EXTERNAL, mPercentageExternal);
+            // check for each tool if it was found this dependency
+            for(Node node : toolNodeMap.values()) {
+                NodeList childNodes = node.getChildNodes();
+                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+                for(int i = 0; i < childNodes.getLength(); i++) {
+                    Node child = childNodes.item(i);
+                    if((dep.wasFoundBy(tool) && child.getNodeName().equals(FOUND_DEPS)) ||
+                            !dep.wasFoundBy(tool) && child.getNodeName().equals(MISSED_DEPS))
+                    {
+                        // increase the old counter by 1
+                        int oldCount = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
+                        setNodeAttribute(child, COUNT, Integer.toString(oldCount + 1));
+                        child.appendChild(createDependency(doc, dep));
+                    }
+                }
+            }
         }
 
         return doc;
@@ -181,36 +185,26 @@ public class Comparator {
     /**
      * gets the packages from the Structure101 output and adds them to the packageMap
      * and adds them to the list of found packages of Structure101
-     * @param doc the parsed document that was output by Structure101
+     * @param matrix the parsed matrix that was output by Structure101
      */
-    private void addStructure101Packages(Document doc) {
-        NodeList cells = doc.getElementsByTagName("cell");
-
-        for(int i = 0; i < cells.getLength(); i++) {
-            Node cell = cells.item(i);
-
-            //get the pattern attribute from each cell
-            String pkg = cell.getAttributes().getNamedItem("pattern").getTextContent();
-
-            //remove the ones that end with *, these are parent packages and we only want leaves
-            if(!pkg.endsWith("*")) {
-                // the most elegant way in the whole world to determine whether this is an internal package or not
-                // external packages are descendants of a cell with name "(unknown)"
-                // you might expect all descendant names to start with "(unknown)" as well then
-                // but this is not true for one whole cell, so we have to resort to this beauty :)
-                Boolean isInternal = !cell.getParentNode().getParentNode().getParentNode().getAttributes()
-                        .getNamedItem("name").getTextContent().equals("(unknown)");
-
-                // Structure101 prepends internal package patterns with the project name, so we remove that
-                if(isInternal) {
-                    pkg = pkg.substring(pkg.indexOf('.')+1);
+    private void addStructure101Packages(List<List<String>> matrix) {
+        int id = 0;
+        for(List<String> row : matrix) {
+            if(id > 0) {
+                String packageName = row.get(PKG_NAME_INDEX);
+                boolean isInternal = !packageName.startsWith("(unknown)");
+                foundPackage(packageName, TOOL_NAME.STRUCTURE101, isInternal, matrix.indexOf(row));
+                for (int i = 1; i < row.size(); i++) {
+                    String dependencyCount = row.get(i);
+                    if (!dependencyCount.isBlank()) {
+                        String from = matrix.get(i).get(PKG_NAME_INDEX);
+                        boolean isFromInternal = !from.startsWith("(unknown)");
+                        foundDependency(from, isFromInternal, i, packageName, isInternal, id,
+                                TOOL_NAME.STRUCTURE101, Integer.parseInt(dependencyCount));
+                    }
                 }
-
-                //get rid of the last part of the pattern (.?)
-                pkg = pkg.substring(0, pkg.length()-2);
-
-                foundPackage(pkg, TOOL_NAME.STRUCTURE101, isInternal);
             }
+            id++;
         }
     }
 
@@ -220,17 +214,21 @@ public class Comparator {
      * @param doc the parsed document that was output by Pyne
      */
     private void addPynePackages(Document doc) {
-        // we want to get all nodes called "node"
+        // we want to get all nodes called "node" and "edge"
         NodeList nodes = doc.getElementsByTagName("node");
+        NodeList edges = doc.getElementsByTagName("edge");
+        Map<String, Pkg> idMap = new HashMap<>();
 
         for(int i = 0; i < nodes.getLength(); i++) {
             Node node = nodes.item(i);
+            // get the id of the node for easy cross referencing
+            String id = node.getAttributes().getNamedItem("id").getTextContent();
 
             // each node contains a set of nodes called "data"
             NodeList datas = node.getChildNodes();
             String pkgName = "";
-            Boolean internal = true;
-            Boolean shouldAdd = true;
+            boolean internal = true;
+            boolean shouldAdd = true;
 
             for(int j = 0; j < datas.getLength(); j++) {
                 Node data = datas.item(j);
@@ -249,11 +247,42 @@ public class Comparator {
                 // (SystemPackage or RetrievedPackage, respectively)
                 else if(key.equals("PackageType")) internal = data.getTextContent().equals("SystemPackage");
 
-                    // the "name" key indicates the name of the package
+                // the "name" key indicates the name of the package
                 else if(key.equals("name")) pkgName = data.getTextContent();
             }
 
-            if(shouldAdd) foundPackage(pkgName, TOOL_NAME.PYNE, internal);
+            if(shouldAdd) idMap.put(id, foundPackage(pkgName, TOOL_NAME.PYNE, internal, Integer.parseInt(id)));
+        }
+
+        for(int i = 0; i < edges.getLength(); i++) {
+            Node edge = edges.item(i);
+
+            String sourceId = edge.getAttributes().getNamedItem("source").getTextContent();
+            String targetId = edge.getAttributes().getNamedItem("target").getTextContent();
+
+            NodeList datas = edge.getChildNodes();
+            boolean shouldAdd = true;
+
+            for(int j = 0; j < datas.getLength(); j++) {
+                Node data = datas.item(j);
+
+                // each "data" node has an attribute "key" that specifies the type of data contained in this node
+                String key = data.getAttributes().getNamedItem("key").getTextContent();
+
+                // the "labelE" key indicates the type of edge this node represents
+                // we are interested in package dependencies, so the rest gets filtered out
+                if (key.equals("labelE") && !data.getTextContent().contains("package")) {
+                    shouldAdd = false;
+                    break;
+                }
+            }
+
+            if(shouldAdd) {
+                Pkg from = idMap.get(sourceId);
+                Pkg to = idMap.get(targetId);
+                foundDependency(from.getName(), from.isInternal(), from.getId(),
+                        to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1);
+            }
         }
     }
 
@@ -266,11 +295,33 @@ public class Comparator {
      * @param toolName the name of the tool that found it
      * @param internal whether or not this is an internal package
      */
-    private void foundPackage(String pkg, TOOL_NAME toolName, Boolean internal) {
+    private Pkg foundPackage(String pkg, TOOL_NAME toolName, boolean internal, int id) {
         if(pkgMap.containsKey(pkg))
-            updateExistingPackage(pkg, toolName);
+            return updateExistingPackage(pkg, toolName);
         else
-            addNewPackage(pkg, toolName, internal, -1);
+            return addNewPackage(pkg, toolName, internal, id);
+    }
+
+    private Dep foundDependency(String from, boolean isFromInternal, int fromId,
+                                 String to, boolean isToInternal, int toId, TOOL_NAME toolName, int amount)
+    {
+        // make sure both the from and to package exist in the packageMap already
+        Pkg fromPkg = foundPackage(from, toolName, isFromInternal, fromId);
+        Pkg toPkg = foundPackage(to, toolName, isToInternal, toId);
+
+        for(Dep dep : depSet) {
+            if(dep.getFrom().getId() == fromPkg.getId() && dep.getTo().getId() == toPkg.getId()) {
+                dep.addFoundBy(toolName);
+                return dep;
+            }
+        }
+        // if we get here the dependency was not in the set yet
+
+        // it's johnny Dep :)
+        Dep johnny = new Dep(fromPkg, toPkg, amount, toolName);
+
+        depSet.add(johnny);
+        return johnny;
     }
 
     /**
@@ -281,16 +332,24 @@ public class Comparator {
      * @param internal whether or not this is an internal package
      * @param id the id of the package that was assigned by the tool
      */
-    private void addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal, Integer id) {
+    private Pkg addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal, Integer id) {
+        // check if the package was not already in the package map by another name (longer/shorter)
+        for(String key : pkgMap.keySet()) {
+            if(pkg.endsWith(key) || key.endsWith(pkg)) {
+                // update the existing package by its known name
+                return updateExistingPackage(key, toolName);
+            }
+        }
+
+        // package really doesn't exists yet
+
         // create a new package with the given parameters in the packageMap
-        Pkg pack = new Pkg(pkg, internal);
+        Pkg pack = new Pkg(pkg, internal, toolName);
         pack.setToolId(toolName, id);
         pack.setToolId(TOOL_NAME.IDEAL, idProvider.getNextId());
         pkgMap.put(pkg, pack);
 
-        // and add this package to the list of found packages of the given tool and of the ideal tool
-        toolPerformances.get(toolName).addPkg(pack);
-        toolPerformances.get(TOOL_NAME.IDEAL).addPkg(pack);
+        return pack;
     }
 
     /**
@@ -299,16 +358,9 @@ public class Comparator {
      * @param pkg the name of the pkg
      * @param toolName the name of the tool that found it
      */
-    private void updateExistingPackage(String pkg, TOOL_NAME toolName) {
+    private Pkg updateExistingPackage(String pkg, TOOL_NAME toolName) {
         Pkg pack = pkgMap.get(pkg);
-        toolPerformances.get(toolName).addPkg(pack);
-    }
-
-    private Set<Pkg> getPackagesByNames(Set<String> names) {
-        Set<Pkg> pkgs = new HashSet<>();
-        for(String name : names) {
-            pkgs.add(pkgMap.get(name));
-        }
-        return pkgs;
+        pack.addFoundBy(toolName);
+        return pack;
     }
 }
