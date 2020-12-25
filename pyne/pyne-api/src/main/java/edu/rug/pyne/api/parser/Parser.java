@@ -301,10 +301,13 @@ public class Parser {
         launcher.getEnvironment().setNoClasspath(true);
         launcher.getEnvironment().setShouldCompile(false);
         launcher.getEnvironment().setComplianceLevel(9);
-        findSourceDirectories().forEach(f -> {
-            launcher.addInputResource(f.getAbsolutePath());
-            LOGGER.info("Added directory to input resource: " + f.getAbsolutePath());
-        });
+        //TODO: instead of getting the source directories, we just give it the root directory
+        //findSourceDirectories().forEach(f -> {
+        //    launcher.addInputResource(f.getAbsolutePath());
+        //    LOGGER.info("Added directory to input resource: " + f.getAbsolutePath());
+        //});
+        launcher.addInputResource(rootDirectory.getAbsolutePath());
+        LOGGER.info("Added directory to input resource: " + rootDirectory.getAbsolutePath());
         return launcher;
     }
 
@@ -330,7 +333,8 @@ public class Parser {
 
         Launcher launcher = getLauncher();
         launcher.buildModel();
-        launcher.getModel();
+        //TODO: does not do anything?
+        //launcher.getModel();
         SpoonModelBuilder modelBuilder = launcher.getModelBuilder();
 
         launcher.process();
@@ -365,13 +369,13 @@ public class Parser {
         Launcher launcher = getLauncher();
 
         launcher.buildModel();
-        launcher.getModel();
+        //TODO: is this even nececarry: launcher.getModel();
         SpoonModelBuilder modelBuilder = launcher.getModelBuilder();
 
-        launcher.process();
+        //TODO: this is not nececarry launcher.process();
         modelBuilder.process(structureProcessors);
 
-        launcher.process();
+        //TODO: this is not nececarry launcher.process();
         modelBuilder.process(analysisProcessors);
 
         for (PostProcess analysisPostProcessor : analysisPostProcessors) {
@@ -395,12 +399,13 @@ public class Parser {
         Set<File> sourceDirs = new HashSet<>();
         var testKeyword = File.separator + "test" + File.separator;
         var exampleKeyword = "example";
+        //TODO: these filters should be removed. They cause certain packages to be excluded.
         try(var stream = Files.walk(searchStartDir)){
             sourceDirs = stream.map(Path::toFile)
                     .filter(File::isDirectory)
-                    .filter(f -> f.toPath().endsWith("src/main") || f.toPath().endsWith("src/java"))
-                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
-                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
+                    //.filter(f -> f.toPath().endsWith("src/main") || f.toPath().endsWith("src/java"))
+                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
+                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
                     .collect(Collectors.toSet());
             if (sourceDirs.isEmpty()){
                 LOGGER.warn("Could not find any non-test Java source directory recursively. Using generic 'src'.");

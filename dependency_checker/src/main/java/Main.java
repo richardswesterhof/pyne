@@ -16,7 +16,7 @@ public class Main {
             System.err.println("Must specify the paths of the Structure101 xml file and the Pyne graphml file");
             System.err.println("Example: java -jar dependency_checker.jar " +
                     "\"../graphs/tajo_dependencies_by_structure101.xml\" " +
-                    "\"../graphs/tajo_dependencies_by_pyne.graphml\" ");
+                    "\"../graphs/tajo_dependencies_by_pyne_with_constructor.graphml\" ");
             System.exit(1);
         }
         String structure101Path = args[0];
