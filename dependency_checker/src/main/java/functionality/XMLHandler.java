@@ -28,6 +28,7 @@ public class XMLHandler {
     public static final String FOUND_PKGS = "foundPackages";
     public static final String FOUND_DEPS = "foundDependencies";
     public static final String FROM_ID = "fromID";
+    public static final String FROM_IS_INTERNAL = "fromIsInternal";
     public static final String ID = "id";
     public static final String INTERNAL = "internal";
     public static final String MISSED_PKGS = "missedPackages";
@@ -39,6 +40,7 @@ public class XMLHandler {
     public static final String PERCENTAGE_EXTERNAL = "percentageExternal";
     public static final String RESULTS = "results";
     public static final String TO_ID = "toID";
+    public static final String TO_IS_INTERNAL = "toIsInternal";
     public static final String TOOL = "tool";
     public static final String TOOLS = "tools";
     public static final String UNINITIALIZED_INT = "0";
@@ -62,6 +64,8 @@ public class XMLHandler {
         // create allPackages Element in root
         Element allPkgs = template.createElement(ALL_PKGS);
         allPkgs.setAttribute(COUNT, UNINITIALIZED_INT);
+        allPkgs.setAttribute(COUNT_INTERNAL, UNINITIALIZED_INT);
+        allPkgs.setAttribute(COUNT_EXTERNAL, UNINITIALIZED_INT);
         root.appendChild(allPkgs);
 
         // create allDependencies Element in root
@@ -134,7 +138,9 @@ public class XMLHandler {
     public static Element createDependency(Document doc, Dep dep) {
         Element dependency = doc.createElement(DEPENDENCY);
         dependency.setAttribute(FROM_ID, Integer.toString(dep.getFrom().getId()));
+        dependency.setAttribute(FROM_IS_INTERNAL, Boolean.toString(dep.getFrom().isInternal()));
         dependency.setAttribute(TO_ID, Integer.toString(dep.getTo().getId()));
+        dependency.setAttribute(TO_IS_INTERNAL, Boolean.toString(dep.getTo().isInternal()));
         dependency.appendChild(doc.createTextNode(""));
 
         return dependency;
