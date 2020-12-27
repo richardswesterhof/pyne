@@ -1,4 +1,7 @@
 public class testClass {
+
+    int hoi = 90;
+
     testClass(int jemoeder,double jevader){
         int x;
     }
@@ -6,6 +9,8 @@ public class testClass {
     static void A(int argument){
         float h = 2;
     }
+
+
 
     class classB{
         int kill = 0;
