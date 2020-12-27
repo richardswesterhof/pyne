@@ -62,6 +62,8 @@ public class XMLHandler {
         // create allPackages Element in root
         Element allPkgs = template.createElement(ALL_PKGS);
         allPkgs.setAttribute(COUNT, UNINITIALIZED_INT);
+        allPkgs.setAttribute(COUNT_INTERNAL, UNINITIALIZED_INT);
+        allPkgs.setAttribute(COUNT_EXTERNAL, UNINITIALIZED_INT);
         root.appendChild(allPkgs);
 
         // create allDependencies Element in root

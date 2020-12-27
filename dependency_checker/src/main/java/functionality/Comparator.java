@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static functionality.XMLHandler.*;
@@ -116,9 +117,22 @@ public class Comparator {
         Node allPkgs = doc.getElementsByTagName(ALL_PKGS).item(0);
         Node tools = doc.getElementsByTagName(TOOLS).item(0);
 
+        int totalPkgs = pkgMap.size();
+        int totalDeps = depSet.size();
+        int internalPkgs = 0;
+        int externalPkgs = 0;
+
+        for(Pkg pkg : pkgMap.values()) {
+            if(pkg.isInternal()) internalPkgs++;
+            else externalPkgs++;
+        }
+
         // set the count of total packages and dependencies in the document
-        setNodeAttribute(allPkgs, COUNT, Integer.toString(pkgMap.size()));
-        setNodeAttribute(allDeps, COUNT, Integer.toString(depSet.size()));
+        setNodeAttribute(allPkgs, COUNT, Integer.toString(totalPkgs));
+        setNodeAttribute(allPkgs, COUNT_INTERNAL, Integer.toString(internalPkgs));
+        setNodeAttribute(allPkgs, COUNT_EXTERNAL, Integer.toString(externalPkgs));
+
+        setNodeAttribute(allDeps, COUNT, Integer.toString(totalDeps));
 
         Map<TOOL_NAME, Node> toolNodeMap = new HashMap<>();
 
@@ -145,12 +159,35 @@ public class Comparator {
                     if((pkg.wasFoundBy(tool) && child.getNodeName().equals(FOUND_PKGS)) ||
                             (!pkg.wasFoundBy(tool) && child.getNodeName().equals(MISSED_PKGS)))
                     {
-                        // increase the old counter by 1
-                        int oldCount = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
-                        String ternal = pkg.isInternal() ? COUNT_INTERNAL : COUNT_EXTERNAL;
+                        // get the appropriate field names depending on whether this package is in- or external
+                        String ternal, ternalPercName;
+                        int ternalTotal;
+                        if(pkg.isInternal()) {
+                            ternal = COUNT_INTERNAL;
+                            ternalPercName = PERCENTAGE_INTERNAL;
+                            ternalTotal = internalPkgs;
+                        }
+                        else {
+                            ternal = COUNT_EXTERNAL;
+                            ternalPercName = PERCENTAGE_EXTERNAL;
+                            ternalTotal = externalPkgs;
+                        }
+
+                        // get the current count from the tree
+                        int count = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
                         int ternalCount = Integer.parseInt(child.getAttributes().getNamedItem(ternal).getTextContent());
-                        setNodeAttribute(child, COUNT, Integer.toString(oldCount + 1));
-                        setNodeAttribute(child, ternal, Integer.toString(ternalCount + 1));
+
+                        // recalculate numbers
+                        count++;
+                        ternalCount++;
+                        float perc = (float)count / totalPkgs * 100;
+                        float ternalPerc = (float)ternalCount / ternalTotal * 100;
+
+                        // set the new values in the tree and add package to the list
+                        setNodeAttribute(child, COUNT, Integer.toString(count));
+                        setNodeAttribute(child, ternal, Integer.toString(ternalCount));
+                        setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
+                        setNodeAttribute(child, ternalPercName, Float.toString(ternalPerc));
                         child.appendChild(createPackage(doc, pkg));
                     }
                 }
@@ -170,9 +207,16 @@ public class Comparator {
                     if((dep.wasFoundBy(tool) && child.getNodeName().equals(FOUND_DEPS)) ||
                             !dep.wasFoundBy(tool) && child.getNodeName().equals(MISSED_DEPS))
                     {
-                        // increase the old counter by 1
-                        int oldCount = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
-                        setNodeAttribute(child, COUNT, Integer.toString(oldCount + 1));
+                        // get the current count from the tree
+                        int count = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
+
+                        // recalculate numbers
+                        count++;
+                        float perc = (float)count / totalDeps * 100;
+
+                        // set the new values in the tree and add dependency to the list
+                        setNodeAttribute(child, COUNT, Integer.toString(count));
+                        setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
                         child.appendChild(createDependency(doc, dep));
                     }
                 }
