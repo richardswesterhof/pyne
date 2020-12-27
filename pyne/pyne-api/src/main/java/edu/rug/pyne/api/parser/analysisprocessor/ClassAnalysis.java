@@ -86,6 +86,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         @Override
         public void accept(CtElement element) {
             if (!(element instanceof CtExecutableReference<?>)) {
+                //TODO: should throw error
                 return;
             }
             CtExecutableReference executable = (CtExecutableReference) element;
@@ -211,8 +212,14 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         ExecutatbleConsumer executatbleConsumer
                 = new ExecutatbleConsumer(references);
 
-        // Get all methods and loop over them
-        for (CtMethod<?> ctMethod : (Set<CtMethod<?>>) clazz.getMethods()) {
+        // Get all methods and constructors and loop over them
+        ArrayList<CtExecutable<?>> executables = new ArrayList<>();
+        executables.addAll((Set<CtExecutable<?>>) clazz.getMethods());
+        if (clazz instanceof CtClass) {
+            System.out.println("is class");
+            executables.addAll((Set<CtExecutable<?>>) ((CtClass) clazz).getConstructors());
+        }
+        for (CtExecutable<?> ctMethod : executables) {
 
             // Get binaryOperators used in the method, so we can check if they 
             // are instanceof elements and add the dependency if so.
@@ -261,6 +268,8 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
         // Get all annotations the class uses and add them
         clazz.getAnnotations().forEach(annotationConsumer);
+
+        // add all the fields annontations
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
         }

@@ -3,8 +3,8 @@ public class testClass {
         int x;
     }
 
-    void A(){
-
+    static void A(int argument){
+        float h = 2;
     }
 
     class classB{
@@ -19,3 +19,5 @@ public class testClass {
         }
     }
 }
+
+
