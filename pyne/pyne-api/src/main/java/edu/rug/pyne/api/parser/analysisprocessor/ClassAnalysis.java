@@ -202,7 +202,6 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      *
      * @param clazz The class being processed
      */
-    //TODO: constructors are not processed
     private List<CtType> getClassReferences(CtType clazz) {
         List<CtType> references = new ArrayList<>();
 
@@ -212,6 +211,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         ExecutatbleConsumer executatbleConsumer
                 = new ExecutatbleConsumer(references);
 
+        //TODO: this is where i add the constructors to the list
         // Get all methods and constructors and loop over them
         ArrayList<CtExecutable<?>> executables = new ArrayList<>();
         executables.addAll((Set<CtExecutable<?>>) clazz.getMethods());
@@ -273,6 +273,11 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
         }
+
+        //TODO: this is where we check for inherent classes
+        //for(CtType<?> nestedType: (List<CtType<?>>) clazz.getNestedTypes()){
+
+        //}
 
         return references;
     }

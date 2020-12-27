@@ -13,6 +13,9 @@ public class Main {
     public static void main(String[] args) {
 
         CtClass l = Launcher.parseClass("public class testClass {\n" +
+                "    \n" +
+                "    int hoi = 90;\n" +
+                "    \n" +
                 "    testClass(int jemoeder,double jevader){\n" +
                 "        int x;\n" +
                 "    }\n" +
@@ -20,6 +23,8 @@ public class Main {
                 "    static void A(int argument){\n" +
                 "        float h = 2;\n" +
                 "    }\n" +
+                "    \n" +
+                "    \n" +
                 "\n" +
                 "    class classB{\n" +
                 "        int kill = 0;\n" +
@@ -41,5 +46,6 @@ public class Main {
         arr.addAll(x);
         arr.addAll(y);
         System.out.println(arr);
+        System.out.println(l.getNestedTypes());
     }
 }

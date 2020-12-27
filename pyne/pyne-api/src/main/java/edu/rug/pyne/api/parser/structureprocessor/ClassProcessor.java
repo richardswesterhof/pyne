@@ -71,13 +71,14 @@ public class ClassProcessor extends AbstractProcessor<CtClass<?>> {
                     return;
                 }
             }
-
+            System.out.println(clazz.getQualifiedName());
             // Try to get the vertex by name
             VertexClass vertex = VertexClass.getVertexClassByName(
                     framedGraph, clazz.getQualifiedName()
             );
 
             // Check if the class exists, if not create it.
+            //TODO: check if all classes are added.
             if (vertex == null) {
                 vertex = VertexClass.createSystemClass(framedGraph, clazz);
             }

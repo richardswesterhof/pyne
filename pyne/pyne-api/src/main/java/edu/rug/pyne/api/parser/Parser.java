@@ -302,12 +302,13 @@ public class Parser {
         launcher.getEnvironment().setShouldCompile(false);
         launcher.getEnvironment().setComplianceLevel(9);
         //TODO: instead of getting the source directories, we just give it the root directory
-        //findSourceDirectories().forEach(f -> {
-        //    launcher.addInputResource(f.getAbsolutePath());
-        //    LOGGER.info("Added directory to input resource: " + f.getAbsolutePath());
-        //});
-        launcher.addInputResource(rootDirectory.getAbsolutePath());
-        LOGGER.info("Added directory to input resource: " + rootDirectory.getAbsolutePath());
+        //launcher.addInputResource(rootDirectory.getAbsolutePath());
+        //LOGGER.info("Added directory to input resource: " + rootDirectory.getAbsolutePath());
+        findSourceDirectories().forEach(f -> {
+            launcher.addInputResource(f.getAbsolutePath());
+            LOGGER.info("Added directory to input resource: " + f.getAbsolutePath());
+        });
+
         return launcher;
     }
 
@@ -334,7 +335,7 @@ public class Parser {
         Launcher launcher = getLauncher();
         launcher.buildModel();
         //TODO: does not do anything?
-        //launcher.getModel();
+        launcher.getModel();
         SpoonModelBuilder modelBuilder = launcher.getModelBuilder();
 
         launcher.process();
@@ -369,13 +370,16 @@ public class Parser {
         Launcher launcher = getLauncher();
 
         launcher.buildModel();
-        //TODO: is this even nececarry: launcher.getModel();
+        //TODO: is this even nececarry:
+        launcher.getModel();
         SpoonModelBuilder modelBuilder = launcher.getModelBuilder();
 
-        //TODO: this is not nececarry launcher.process();
+        //TODO: this is not nececarry
+        launcher.process();
         modelBuilder.process(structureProcessors);
 
-        //TODO: this is not nececarry launcher.process();
+        //TODO: this is not nececarry
+        launcher.process();
         modelBuilder.process(analysisProcessors);
 
         for (PostProcess analysisPostProcessor : analysisPostProcessors) {
@@ -403,9 +407,9 @@ public class Parser {
         try(var stream = Files.walk(searchStartDir)){
             sourceDirs = stream.map(Path::toFile)
                     .filter(File::isDirectory)
-                    //.filter(f -> f.toPath().endsWith("src/main") || f.toPath().endsWith("src/java"))
-                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
-                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
+                    .filter(f -> f.toPath().endsWith("src/main") || f.toPath().endsWith("src/java"))
+                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
+                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
                     .collect(Collectors.toSet());
             if (sourceDirs.isEmpty()){
                 LOGGER.warn("Could not find any non-test Java source directory recursively. Using generic 'src'.");
