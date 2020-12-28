@@ -1,6 +1,7 @@
 package functionality;
 
 import com.opencsv.CSVReader;
+import org.apache.commons.cli.CommandLine;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -12,7 +13,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static functionality.XMLHandler.*;
@@ -27,7 +27,7 @@ public class Comparator {
         PYNE
     }
 
-    private Map<String, Pkg> pkgMap = new HashMap<>();
+    private Map<String, Cls> clsMap = new HashMap<>();
     private Set<Dep> depSet = new HashSet<>();
 
     private IDProvider idProvider = new IDProvider();
@@ -37,14 +37,16 @@ public class Comparator {
     List<List<String>> structure101Matrix;
     Document pyneDoc;
 
-    private static final int PKG_NAME_INDEX = 0;
-
+    private static final int CLS_NAME_INDEX = 0;
 
     DocumentBuilder dBuilder;
 
-    public Comparator(File structure101File, File pyneFile) {
+    CommandLine cmd;
+
+    public Comparator(File structure101File, File pyneFile, CommandLine cmd) {
         this.structure101File = structure101File;
         this.pyneFile = pyneFile;
+        this.cmd = cmd;
     }
 
     /**
@@ -81,6 +83,12 @@ public class Comparator {
         }
     }
 
+    /**
+     * imports pynes data from the given file
+     * @throws ParserConfigurationException
+     * @throws SAXException
+     * @throws IOException
+     */
     private void importPyneData() throws ParserConfigurationException, SAXException, IOException {
         dBuilder = XMLHandler.getDocumentBuilder();
         // parse file
@@ -90,20 +98,22 @@ public class Comparator {
     }
 
     /**
-     * collects the packages for all tools
+     * collects the classes for all tools
      */
-    public void collectAllPackages() {
-        addStructure101Packages(structure101Matrix);
-        addPynePackages(pyneDoc);
+    public void collectAllClasses() {
+        addStructure101Classes(structure101Matrix);
+        addPyneClasses(pyneDoc);
         // this is where one would add calls to other tool specific methods
         // in case a new tool joins the comparison
     }
 
     /**
-     * checks for each found package which tool was and wasn't able to find it, and reports the results
+     * checks for each found class which tool was and wasn't able to find it, and reports the results
+     * @param extensive whether or not the resulting tree should be focussed on being easier to read,
+     *                  this will lead to a much bigger tree!
      * @return a Document tree containing the results per tool
      */
-    public Document compareResults() {
+    public Document compareResults(boolean extensive) {
         // perform an ancient ritual to summon a List<String> from an Enum
         List<String> toolNames = new ArrayList<>(Arrays.asList(Stream.of(TOOL_NAME.values()).map(TOOL_NAME::toString).toArray(String[]::new)));
         // and make sure to remove the ideal tool, since it will be handled differently from normal tools
@@ -114,23 +124,23 @@ public class Comparator {
 
         // get the three children of the root element
         Node allDeps = doc.getElementsByTagName(ALL_DEPS).item(0);
-        Node allPkgs = doc.getElementsByTagName(ALL_PKGS).item(0);
+        Node allClss = doc.getElementsByTagName(ALL_CLSS).item(0);
         Node tools = doc.getElementsByTagName(TOOLS).item(0);
 
-        int totalPkgs = pkgMap.size();
+        int totalClss = clsMap.size();
         int totalDeps = depSet.size();
-        int internalPkgs = 0;
-        int externalPkgs = 0;
+        int internalClss = 0;
+        int externalClss = 0;
 
-        for(Pkg pkg : pkgMap.values()) {
-            if(pkg.isInternal()) internalPkgs++;
-            else externalPkgs++;
+        for(Cls cls : clsMap.values()) {
+            if(cls.isInternal()) internalClss++;
+            else externalClss++;
         }
 
-        // set the count of total packages and dependencies in the document
-        setNodeAttribute(allPkgs, COUNT, Integer.toString(totalPkgs));
-        setNodeAttribute(allPkgs, COUNT_INTERNAL, Integer.toString(internalPkgs));
-        setNodeAttribute(allPkgs, COUNT_EXTERNAL, Integer.toString(externalPkgs));
+        // set the count of total classes and dependencies in the document
+        setNodeAttribute(allClss, COUNT, Integer.toString(totalClss));
+        setNodeAttribute(allClss, COUNT_INTERNAL, Integer.toString(internalClss));
+        setNodeAttribute(allClss, COUNT_EXTERNAL, Integer.toString(externalClss));
 
         setNodeAttribute(allDeps, COUNT, Integer.toString(totalDeps));
 
@@ -144,33 +154,33 @@ public class Comparator {
             toolNodeMap.put(tool, node);
         }
 
-        // check which tools found which packages
-        for(Pkg pkg : pkgMap.values()) {
-            // first add this package to the list of all packages
-            allPkgs.appendChild(createPackage(doc, pkg));
+        // check which tools found which classes
+        for(Cls cls : clsMap.values()) {
+            // first add this classes to the list of all classes
+            allClss.appendChild(createClass(doc, cls));
 
-            // check for each tool if it was found this package
+            // check for each tool if it was found this class
             for(Node node : toolNodeMap.values()) {
                 NodeList childNodes = node.getChildNodes();
                 TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
 
                 for(int i = 0; i < childNodes.getLength(); i++) {
                     Node child = childNodes.item(i);
-                    if((pkg.wasFoundBy(tool) && child.getNodeName().equals(FOUND_PKGS)) ||
-                            (!pkg.wasFoundBy(tool) && child.getNodeName().equals(MISSED_PKGS)))
+                    if((cls.wasFoundBy(tool) && child.getNodeName().equals(FOUND_CLSS)) ||
+                            (!cls.wasFoundBy(tool) && child.getNodeName().equals(MISSED_CLSS)))
                     {
-                        // get the appropriate field names depending on whether this package is in- or external
+                        // get the appropriate field names depending on whether this class is in- or external
                         String ternal, ternalPercName;
                         int ternalTotal;
-                        if(pkg.isInternal()) {
+                        if(cls.isInternal()) {
                             ternal = COUNT_INTERNAL;
                             ternalPercName = PERCENTAGE_INTERNAL;
-                            ternalTotal = internalPkgs;
+                            ternalTotal = internalClss;
                         }
                         else {
                             ternal = COUNT_EXTERNAL;
                             ternalPercName = PERCENTAGE_EXTERNAL;
-                            ternalTotal = externalPkgs;
+                            ternalTotal = externalClss;
                         }
 
                         // get the current count from the tree
@@ -180,15 +190,15 @@ public class Comparator {
                         // recalculate numbers
                         count++;
                         ternalCount++;
-                        float perc = (float)count / totalPkgs * 100;
+                        float perc = (float)count / totalClss * 100;
                         float ternalPerc = (float)ternalCount / ternalTotal * 100;
 
-                        // set the new values in the tree and add package to the list
+                        // set the new values in the tree and add class to the list
                         setNodeAttribute(child, COUNT, Integer.toString(count));
                         setNodeAttribute(child, ternal, Integer.toString(ternalCount));
                         setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
                         setNodeAttribute(child, ternalPercName, Float.toString(ternalPerc));
-                        child.appendChild(createPackage(doc, pkg));
+                        child.appendChild(createClass(doc, cls));
                     }
                 }
             }
@@ -196,7 +206,9 @@ public class Comparator {
 
         // same for found dependencies
         for(Dep dep : depSet) {
-            allDeps.appendChild(createDependency(doc, dep));
+            // create simple or extended dependency based on cli option
+            if(extensive) allDeps.appendChild(createExtendedDependency(doc, dep));
+            else allDeps.appendChild(createSimpleDependency(doc, dep));
 
             // check for each tool if it was found this dependency
             for(Node node : toolNodeMap.values()) {
@@ -217,7 +229,10 @@ public class Comparator {
                         // set the new values in the tree and add dependency to the list
                         setNodeAttribute(child, COUNT, Integer.toString(count));
                         setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
-                        child.appendChild(createDependency(doc, dep));
+
+                        // create simple or extended dependency based on cli option
+                        if(extensive) child.appendChild(createExtendedDependency(doc, dep));
+                        else child.appendChild(createSimpleDependency(doc, dep));
                     }
                 }
             }
@@ -227,23 +242,23 @@ public class Comparator {
     }
 
     /**
-     * gets the packages from the Structure101 output and adds them to the packageMap
-     * and adds them to the list of found packages of Structure101
+     * gets the classes from the Structure101 output and adds them to the classMap
+     * and adds them to the list of found classes of Structure101
      * @param matrix the parsed matrix that was output by Structure101
      */
-    private void addStructure101Packages(List<List<String>> matrix) {
+    private void addStructure101Classes(List<List<String>> matrix) {
         int id = 0;
         for(List<String> row : matrix) {
             if(id > 0) {
-                String packageName = row.get(PKG_NAME_INDEX);
-                boolean isInternal = !packageName.startsWith("(unknown)");
-                foundPackage(packageName, TOOL_NAME.STRUCTURE101, isInternal, matrix.indexOf(row));
-                for (int i = 1; i < row.size(); i++) {
+                String className = row.get(CLS_NAME_INDEX);
+                boolean isInternal = !className.startsWith("(unknown)");
+                foundClass(className, TOOL_NAME.STRUCTURE101, isInternal, matrix.indexOf(row));
+                for(int i = 1; i < row.size(); i++) {
                     String dependencyCount = row.get(i);
-                    if (!dependencyCount.isBlank()) {
-                        String from = matrix.get(i).get(PKG_NAME_INDEX);
+                    if(!dependencyCount.isBlank()) {
+                        String from = matrix.get(i).get(CLS_NAME_INDEX);
                         boolean isFromInternal = !from.startsWith("(unknown)");
-                        foundDependency(from, isFromInternal, i, packageName, isInternal, id,
+                        foundDependency(from, isFromInternal, i, className, isInternal, id,
                                 TOOL_NAME.STRUCTURE101, Integer.parseInt(dependencyCount));
                     }
                 }
@@ -253,15 +268,15 @@ public class Comparator {
     }
 
     /**
-     * gets the package from the Pyne output and adds them to the packageMap
-     * and adds them to the list of found packages of Pyne
+     * gets the class from the Pyne output and adds them to the classMap
+     * and adds them to the list of found classes of Pyne
      * @param doc the parsed document that was output by Pyne
      */
-    private void addPynePackages(Document doc) {
+    private void addPyneClasses(Document doc) {
         // we want to get all nodes called "node" and "edge"
         NodeList nodes = doc.getElementsByTagName("node");
         NodeList edges = doc.getElementsByTagName("edge");
-        Map<String, Pkg> idMap = new HashMap<>();
+        Map<String, Cls> idMap = new HashMap<>();
 
         for(int i = 0; i < nodes.getLength(); i++) {
             Node node = nodes.item(i);
@@ -270,7 +285,7 @@ public class Comparator {
 
             // each node contains a set of nodes called "data"
             NodeList datas = node.getChildNodes();
-            String pkgName = "";
+            String clsName = "";
             boolean internal = true;
             boolean shouldAdd = true;
 
@@ -281,21 +296,21 @@ public class Comparator {
                 String key = data.getAttributes().getNamedItem("key").getTextContent();
 
                 // the "labelV" key indicates the type of object this node represents (package, class)
-                // we are interested in the packages, so the rest gets filtered out
-                if(key.equals("labelV") && !data.getTextContent().equals("package")) {
+                // we are interested in the classes, so the rest gets filtered out
+                if(key.equals("labelV") && !data.getTextContent().equals("class")) {
                     shouldAdd = false;
                     break;
                 }
 
-                // the "PackageType" key indicates whether the class is internal or external
-                // (SystemPackage or RetrievedPackage, respectively)
-                else if(key.equals("PackageType")) internal = data.getTextContent().equals("SystemPackage");
+                // the "ClassType" key indicates whether the class is internal or external
+                // (SystemClass or RetrievedClass, respectively)
+                else if(key.equals("ClassType")) internal = data.getTextContent().equals("SystemClass");
 
-                // the "name" key indicates the name of the package
-                else if(key.equals("name")) pkgName = data.getTextContent();
+                // the "name" key indicates the name of the class
+                else if(key.equals("name")) clsName = data.getTextContent();
             }
 
-            if(shouldAdd) idMap.put(id, foundPackage(pkgName, TOOL_NAME.PYNE, internal, Integer.parseInt(id)));
+            if(shouldAdd) idMap.put(id, foundClass(clsName, TOOL_NAME.PYNE, internal, Integer.parseInt(id)));
         }
 
         for(int i = 0; i < edges.getLength(); i++) {
@@ -314,16 +329,16 @@ public class Comparator {
                 String key = data.getAttributes().getNamedItem("key").getTextContent();
 
                 // the "labelE" key indicates the type of edge this node represents
-                // we are interested in package dependencies, so the rest gets filtered out
-                if (key.equals("labelE") && !data.getTextContent().contains("package")) {
+                // we are interested in class dependencies, so the rest gets filtered out
+                if (key.equals("labelE") && !data.getTextContent().contains("class")) {
                     shouldAdd = false;
                     break;
                 }
             }
 
             if(shouldAdd) {
-                Pkg from = idMap.get(sourceId);
-                Pkg to = idMap.get(targetId);
+                Cls from = idMap.get(sourceId);
+                Cls to = idMap.get(targetId);
                 foundDependency(from.getName(), from.isInternal(), from.getId(),
                         to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1);
             }
@@ -331,30 +346,42 @@ public class Comparator {
     }
 
     /**
-     * marks a package as found by the given tool
-     * by updating an existing or creating a new package in the packageMap,
-     * package on whether it already exists or not
-     * and adding it to the list of found packages of the given tool
-     * @param pkg the name of the pkg
+     * marks a class as found by the given tool
+     * by updating an existing or creating a new class in the classMap,
+     * depending on whether it already exists or not
+     * and adding it to the list of found classes of the given tool
+     * @param cls the name of the cls
      * @param toolName the name of the tool that found it
-     * @param internal whether or not this is an internal package
+     * @param internal whether or not this is an internal class
      */
-    private Pkg foundPackage(String pkg, TOOL_NAME toolName, boolean internal, int id) {
-        if(pkgMap.containsKey(pkg))
-            return updateExistingPackage(pkg, toolName);
+    private Cls foundClass(String cls, TOOL_NAME toolName, boolean internal, int id) {
+        if(clsMap.containsKey(cls))
+            return updateExistingClass(cls, toolName);
         else
-            return addNewPackage(pkg, toolName, internal, id);
+            return addNewPackage(cls, toolName, internal, id);
     }
 
+    /**
+     *
+     * @param from
+     * @param isFromInternal
+     * @param fromId
+     * @param to
+     * @param isToInternal
+     * @param toId
+     * @param toolName
+     * @param amount
+     * @return
+     */
     private Dep foundDependency(String from, boolean isFromInternal, int fromId,
                                  String to, boolean isToInternal, int toId, TOOL_NAME toolName, int amount)
     {
-        // make sure both the from and to package exist in the packageMap already
-        Pkg fromPkg = foundPackage(from, toolName, isFromInternal, fromId);
-        Pkg toPkg = foundPackage(to, toolName, isToInternal, toId);
+        // make sure both the from and to class exist in the classMap already
+        Cls fromCls = foundClass(from, toolName, isFromInternal, fromId);
+        Cls toCls = foundClass(to, toolName, isToInternal, toId);
 
         for(Dep dep : depSet) {
-            if(dep.getFrom().getId() == fromPkg.getId() && dep.getTo().getId() == toPkg.getId()) {
+            if(dep.getFrom().getId() == fromCls.getId() && dep.getTo().getId() == toCls.getId()) {
                 dep.addFoundBy(toolName);
                 return dep;
             }
@@ -362,49 +389,103 @@ public class Comparator {
         // if we get here the dependency was not in the set yet
 
         // it's johnny Dep :)
-        Dep johnny = new Dep(fromPkg, toPkg, amount, toolName);
+        Dep johnny = new Dep(fromCls, toCls, amount, toolName);
 
         depSet.add(johnny);
         return johnny;
     }
 
     /**
-     * creates a new pkg in the packageMap
-     * and adds it to the list of found package of the given tool
-     * @param pkg the name of the pkg
+     * creates a new cls in the classMap
+     * and adds it to the list of found class of the given tool
+     * @param cls the name of the cls
      * @param toolName the name of the tool that found it
-     * @param internal whether or not this is an internal package
-     * @param id the id of the package that was assigned by the tool
+     * @param internal whether or not this is an internal class
+     * @param id the id of the class that was assigned by the tool
      */
-    private Pkg addNewPackage(String pkg, TOOL_NAME toolName, Boolean internal, Integer id) {
-        // check if the package was not already in the package map by another name (longer/shorter)
-        for(String key : pkgMap.keySet()) {
-            if(pkg.endsWith(key) || key.endsWith(pkg)) {
-                // update the existing package by its known name
-                return updateExistingPackage(key, toolName);
+    private Cls addNewPackage(String cls, TOOL_NAME toolName, Boolean internal, Integer id) {
+        // check if the class was not already in the classMap by another name (longer/shorter)
+        for(String key : clsMap.keySet()) {
+            if(isSame(key, cls)) {
+                // update the existing class by its known name
+                return updateExistingClass(key, toolName);
             }
         }
 
-        // package really doesn't exists yet
+        // class really doesn't exists yet
 
-        // create a new package with the given parameters in the packageMap
-        Pkg pack = new Pkg(pkg, internal, toolName);
-        pack.setToolId(toolName, id);
-        pack.setToolId(TOOL_NAME.IDEAL, idProvider.getNextId());
-        pkgMap.put(pkg, pack);
+        // create a new class with the given parameters in the classMap
+        Cls clas = new Cls(cls, internal, toolName);
+        clas.setToolId(toolName, id);
+        clas.setToolId(TOOL_NAME.IDEAL, idProvider.getNextId());
+        clsMap.put(cls, clas);
 
-        return pack;
+        return clas;
     }
 
     /**
-     * updates an existing pkg in the packageMap
-     * and adds it to the list of found packages of the given tool
-     * @param pkg the name of the pkg
+     * checks whether 2 strings indicate the same class
+     * @param s1 the first string
+     * @param s2 the second string
+     * @return
+     */
+    public static boolean isSame(String s1, String s2) {
+        String structure101Name;
+        String pyneName;
+
+        // find out which string is which
+        // since class names cannot have dots in them,
+        // if it contains a dot it must be the full class name including the packages
+        // that's what Pyne does, so we know that is the Pyne String
+        if(s1.contains(".")) {
+            pyneName = s1;
+            structure101Name = s2;
+        }
+        else {
+            pyneName = s2;
+            structure101Name = s1;
+        }
+
+        List<String> s101Parts = new ArrayList<>(Arrays.asList(structure101Name.split("_")));
+        List<String> pParts = new ArrayList<>(Arrays.asList(pyneName.split("\\.")));
+
+        // split the last part (i.e. the real class name) on underscores, so it will line up with the s101Parts
+        // in case the class name itself contains underscores
+        List<String> split = Arrays.asList(pParts.get(pParts.size() - 1).split("_"));
+        // remove the un-split version to avoid duplication
+        pParts.remove(pParts.size() - 1);
+        pParts.addAll(split);
+
+//        if(print) System.out.println(s101Parts + "\n" + pParts);
+
+        int s101Ind = s101Parts.size() - 1;
+        int pInd = pParts.size() - 1;
+
+        while(pInd >= 0) {
+            if(s101Ind < 0) return true;
+            String p = pParts.get(pInd);
+            String s = s101Parts.get(s101Ind);
+
+//            if(print) System.out.println(p + ", " + s);
+            if(!s.startsWith("(") && !p.startsWith(s))
+                return false;
+
+            s101Ind--;
+            pInd--;
+        }
+
+        return true;
+    }
+
+    /**
+     * updates an existing cls in the classMap
+     * and adds it to the list of found classes of the given tool
+     * @param cls the name of the cls
      * @param toolName the name of the tool that found it
      */
-    private Pkg updateExistingPackage(String pkg, TOOL_NAME toolName) {
-        Pkg pack = pkgMap.get(pkg);
-        pack.addFoundBy(toolName);
-        return pack;
+    private Cls updateExistingClass(String cls, TOOL_NAME toolName) {
+        Cls clas = clsMap.get(cls);
+        clas.addFoundBy(toolName);
+        return clas;
     }
 }

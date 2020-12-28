@@ -5,13 +5,13 @@ import java.util.Set;
 
 public class Dep {
 
-    private Pkg from;
-    private Pkg to;
+    private Cls from;
+    private Cls to;
     private int amount;
     private Set<Comparator.TOOL_NAME> foundBy = new HashSet<>();
 
 
-    public Dep(Pkg from, Pkg to, int amount, Comparator.TOOL_NAME found) {
+    public Dep(Cls from, Cls to, int amount, Comparator.TOOL_NAME found) {
         this.from = from;
         this.to = to;
         this.amount = amount;
@@ -27,11 +27,11 @@ public class Dep {
         return foundBy.contains(tool);
     }
 
-    public Pkg getFrom() {
+    public Cls getFrom() {
         return from;
     }
 
-    public Pkg getTo() {
+    public Cls getTo() {
         return to;
     }
 
