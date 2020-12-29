@@ -151,9 +151,11 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
     private void processClassReferences(CtType clazz, VertexClass vertexClass) {
 
         for (CtType referencedClass : getClassReferences(clazz)) {
+
             if (referencedClass == null || referencedClass.getReference() == null) {
                 continue;
             }
+
             VertexClass referencedClassVertex
                         = getOrCreateVertexClass(referencedClass.getReference());
                 vertexClass.addDependOnClass(referencedClassVertex);
