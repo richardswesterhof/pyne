@@ -46,7 +46,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
     private class AnnotationConsumer
             implements Consumer<CtAnnotation<? extends Annotation>> {
 
-        private final List<CtType> dependences;
+        private final List<CtTypeReference> dependences;
 
         /**
          * A consumer for annotations, used to get the type and add the
@@ -54,13 +54,13 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
          *
          * @param dependences The list to add the found type to
          */
-        public AnnotationConsumer(List<CtType> dependences) {
+        public AnnotationConsumer(List<CtTypeReference> dependences) {
             this.dependences = dependences;
         }
 
         @Override
         public void accept(CtAnnotation<? extends Annotation> annotation) {
-            dependences.add(annotation.getAnnotationType().getDeclaration());
+            dependences.add(annotation.getAnnotationType());
         }
 
     }
@@ -150,17 +150,16 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      */
     private void processClassReferences(CtType clazz, VertexClass vertexClass) {
 
-        for (CtType referencedClass : getClassReferences(clazz)) {
+        for (CtTypeReference referencedClass : getClassReferences(clazz)) {
 
-            if (referencedClass == null || referencedClass.getReference() == null) {
+            if (referencedClass == null) {
                 continue;
             }
 
             VertexClass referencedClassVertex
-                        = getOrCreateVertexClass(referencedClass.getReference());
+                        = getOrCreateVertexClass(referencedClass);
                 vertexClass.addDependOnClass(referencedClassVertex);
         }
-
     }
 
     /**
@@ -168,15 +167,8 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      *
      * @param clazz The class being processed
      */
-    private List<CtType> getClassReferences(CtType clazz) {
-        List<CtType> references = new ArrayList<>();
-
-        if(clazz.getQualifiedName().contains("org.apache.tajo.cli.tools.TajoGetConf")){
-            System.out.println("found: "+clazz.getQualifiedName());
-            System.out.println("applying printed getclassreferenes() function");
-            //references.forEach(x-> System.out.println(x.getQualifiedName()));
-            return getClassReferencesWithPrint(clazz);
-        }
+    private List<CtTypeReference> getClassReferences(CtType clazz) {
+        List<CtTypeReference> references = new ArrayList<>();
 
         // Sets up the consumers that will add the references.
         AnnotationConsumer annotationConsumer
@@ -190,6 +182,9 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             executables.addAll((Set<CtExecutable<?>>) ((CtClass) clazz).getConstructors());
         }
         for (CtExecutable<?> ctMethod : executables) {
+
+            //add return value of method
+            references.add(ctMethod.getType());
 
             // Get binaryOperators used in the method, so we can check if they 
             // are instanceof elements and add the dependency if so.
@@ -198,15 +193,15 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
             for (CtBinaryOperator<?> element : BinaryElements) {
                 if (element.getKind().equals(BinaryOperatorKind.INSTANCEOF)) {
-                    references.add(element.getRightHandOperand().getType()
-                            .getTypeDeclaration());
+                    references.add(element.getRightHandOperand().getType());
                 }
             }
 
-            // Add all references for annotations this method uses
+            // Add all paramater references and annotations
             ctMethod.getAnnotations().forEach(annotationConsumer);
             for (CtParameter<?> parameter : ctMethod.getParameters()) {
                 parameter.getAnnotations().forEach(annotationConsumer);
+                references.add(parameter.getType());
             }
 
             // Get the body if the method has one
@@ -221,7 +216,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
             //add all references for the constructor calls in the method
             for(CtConstructorCall<?> c : constructorElements){
-                references.add(c.getType().getTypeDeclaration());
+                references.add(c.getType());
             }
 
             // Get all invocations in the method
@@ -232,7 +227,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
                 if(c.getExecutable().getDeclaringType() == null){
                     System.out.println("Pyne cannot find declaration of "+ c);
                 }else {
-                    references.add(c.getExecutable().getDeclaringType().getTypeDeclaration());
+                    references.add(c.getExecutable().getDeclaringType());
                 }
             }
         }
@@ -240,119 +235,15 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         // Get all annotations the class uses and add them
         clazz.getAnnotations().forEach(annotationConsumer);
 
-        // add all the fields annontations
+        // add all the fields types and annotations
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
+            references.add(field.getType());
         }
 
         return references;
     }
 
-    private List<CtType> getClassReferencesWithPrint(CtType clazz) {
-        List<CtType> references = new ArrayList<>();
-
-        // Sets up the consumers that will add the references.
-        AnnotationConsumer annotationConsumer
-                = new AnnotationConsumer(references);
-
-        //TODO: this is where i add the constructors to the list
-        // Get all methods and constructors and loop over them
-        ArrayList<CtExecutable<?>> executables = new ArrayList<>();
-        executables.addAll((Set<CtExecutable<?>>) clazz.getMethods());
-        if (clazz instanceof CtClass) {
-            executables.addAll((Set<CtExecutable<?>>) ((CtClass) clazz).getConstructors());
-        }
-        for (CtExecutable<?> ctMethod : executables) {
-            System.out.println("parsing method: "+ctMethod);
-            // Get binaryOperators used in the method, so we can check if they
-            // are instanceof elements and add the dependency if so.
-            List<CtBinaryOperator<?>> BinaryElements = ctMethod
-                    .getElements(new TypeFilter<>(CtBinaryOperator.class));
-
-            for (CtBinaryOperator<?> element : BinaryElements) {
-                if (element.getKind().equals(BinaryOperatorKind.INSTANCEOF)) {
-                    references.add(element.getRightHandOperand().getType()
-                            .getTypeDeclaration());
-                    System.out.println("binary operator: "+element.getRightHandOperand().getType()
-                            .getTypeDeclaration());
-                }
-            }
-
-            // Add all references for annotations this method uses
-            ctMethod.getAnnotations().forEach(annotationConsumer);
-            for (CtParameter<?> parameter : ctMethod.getParameters()) {
-                parameter.getAnnotations().forEach(annotationConsumer);
-                System.out.println("Annotations for "+parameter+" : "+parameter.getAnnotations());
-            }
-
-            // Get the body if the method has one
-            CtBlock<?> body = ctMethod.getBody();
-            if (body == null) {
-                continue;
-            }
-
-            // Get all constructors in the method
-            List<CtConstructorCall<?>> constructorElements = body
-                    .getElements(new TypeFilter<>(CtConstructorCall.class));
-            System.out.println("Constructor calls "+constructorElements);
-
-            //add all references for the constructor calls in the method
-            for(CtConstructorCall<?> c : constructorElements){
-                System.out.println("Constructor call Type "+c.getType());
-                //TODO: this is what i want.
-                //System.out.println("Constructor call Class "+c.getType().getTypeDeclaration());
-                references.add(c.getType().getTypeDeclaration());
-            }
-
-
-
-
-            // Get all invocations in the method
-            List<CtInvocation<?>> invocationElements = body
-                    .getElements(new TypeFilter<>(CtInvocation.class));
-
-            System.out.println("invocation elements "+invocationElements);
-            for(CtInvocation<?> c : invocationElements){
-                System.out.println("Invocation call executable "+c.getExecutable());
-
-                System.out.println("Invocation call declaring type "+c.getExecutable().getDeclaringType());
-                if(c.getExecutable().getDeclaringType() == null){
-                    System.out.println("Pyne cannot find declaration of "+ c);
-                }else {
-                    //TODO: this is what i want.
-                    //System.out.println("Invocation call declaring class " + c.getExecutable().getDeclaringType().getTypeDeclaration());
-                    references.add(c.getExecutable().getDeclaringType().getTypeDeclaration());
-                }
-            }
-
-            // Add all references from the constructors
-            //constructorElements.forEach((constructorCall) -> {
-            //    constructorCall.getDirectChildren()
-            //            .forEach(executatbleConsumer);
-            //});
-
-            // Add all references from the invocations.
-            //invocationElements.forEach((statement) -> {
-            //    statement.getDirectChildren().forEach(executatbleConsumer);
-            //});
-
-        }
-
-        // Get all annotations the class uses and add them
-        clazz.getAnnotations().forEach(annotationConsumer);
-
-        System.out.println("clazz annotations "+clazz.getAnnotations());
-
-        // add all the fields annontations
-        for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
-            System.out.println("Annotations for field "+field+" : "+field.getAnnotations());
-            field.getAnnotations().forEach(annotationConsumer);
-        }
-
-        references.forEach(x -> System.out.println(x.getQualifiedName()));
-
-        return references;
-    }
 
     /**
      * Gets the vertex class by the reference. If it does not exists a new
