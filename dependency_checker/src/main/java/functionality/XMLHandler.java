@@ -47,6 +47,7 @@ public class XMLHandler {
     public static final String PERCENTAGE_TOTAL = "percentageTotal";
     public static final String PERCENTAGE_INTERNAL = "percentageInternal";
     public static final String PERCENTAGE_EXTERNAL = "percentageExternal";
+    public static final String PERCENTAGE_UNKNOWN = "percentageUnknown";
     public static final String RESULTS = "results";
     public static final String TO_ID = "toID";
     public static final String TO_IS_INTERNAL = "toIsInternal";
@@ -145,9 +146,11 @@ public class XMLHandler {
         list.setAttribute(COUNT, UNINITIALIZED_INT);
         list.setAttribute(COUNT_INTERNAL, UNINITIALIZED_INT);
         list.setAttribute(COUNT_EXTERNAL, UNINITIALIZED_INT);
+        list.setAttribute(COUNT_UNKNOWN, UNINITIALIZED_INT);
         list.setAttribute(PERCENTAGE_TOTAL, UNINITIALIZED_INT);
         list.setAttribute(PERCENTAGE_INTERNAL, UNINITIALIZED_INT);
         list.setAttribute(PERCENTAGE_EXTERNAL, UNINITIALIZED_INT);
+        list.setAttribute(PERCENTAGE_UNKNOWN, UNINITIALIZED_INT);
 
         return list;
     }
@@ -157,14 +160,14 @@ public class XMLHandler {
 
         Element fii = doc.createElement(FROM_IS_INTERNAL);
         Element fn = doc.createElement(FROM_NAME);
-        fii.appendChild(doc.createTextNode(Boolean.toString(dep.getFrom().isInternal())));
+        fii.appendChild(doc.createTextNode(dep.getFrom().isInternal() == null ? "" : Boolean.toString(dep.getFrom().isInternal())));
         fn.appendChild(doc.createTextNode(dep.getFrom().getName()));
         dependency.appendChild(fii);
         dependency.appendChild(fn);
 
         Element tii = doc.createElement(TO_IS_INTERNAL);
         Element tn = doc.createElement(TO_NAME);
-        tii.appendChild(doc.createTextNode(Boolean.toString(dep.getTo().isInternal())));
+        tii.appendChild(doc.createTextNode(dep.getTo().isInternal() == null ? "" : Boolean.toString(dep.getTo().isInternal())));
         tn.appendChild(doc.createTextNode(dep.getTo().getName()));
         dependency.appendChild(tii);
         dependency.appendChild(tn);

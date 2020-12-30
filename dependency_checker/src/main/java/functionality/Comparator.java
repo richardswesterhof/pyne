@@ -101,9 +101,9 @@ public class Comparator {
     /**
      * collects the classes for all tools
      */
-    public void collectAllClasses() {
-        addStructure101Classes(structure101Matrix, classLevel);
-        addPyneClasses(pyneDoc, classLevel);
+    public void collectAllItems() {
+        addStructure101Items(structure101Matrix, classLevel);
+        addPyneItems(pyneDoc, classLevel);
         // this is where one would add calls to other tool specific methods
         // in case a new tool joins the comparison
     }
@@ -128,7 +128,7 @@ public class Comparator {
         Node allDeps = doc.getElementsByTagName(ALL_DEPS).item(0);
         Node allItms = classLevel ?
                 doc.getElementsByTagName(ALL_CLSS).item(0) :
-                doc.getElementsByTagName(ALL_DEPS).item(0);
+                doc.getElementsByTagName(ALL_PKGS).item(0);
         Node tools = doc.getElementsByTagName(TOOLS).item(0);
 
         int totalItms = itmMap.size();
@@ -173,13 +173,18 @@ public class Comparator {
 
                 for(int i = 0; i < childNodes.getLength(); i++) {
                     Node child = childNodes.item(i);
-                    if((itm.wasFoundBy(tool) && child.getNodeName().equals(FOUND_CLSS)) ||
-                            (!itm.wasFoundBy(tool) && child.getNodeName().equals(MISSED_CLSS)))
+                    if((itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? FOUND_CLSS : FOUND_PKGS)) ||
+                            (!itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? MISSED_CLSS : MISSED_PKGS)))
                     {
                         // get the appropriate field names depending on whether this class is in- or external
                         String ternal, ternalPercName;
                         int ternalTotal;
-                        if(itm.isInternal()) {
+                        if(itm.isInternal() == null) {
+                            ternal = COUNT_UNKNOWN;
+                            ternalPercName = PERCENTAGE_UNKNOWN;
+                            ternalTotal = unknownItms;
+                        }
+                        else if(itm.isInternal()) {
                             ternal = COUNT_INTERNAL;
                             ternalPercName = PERCENTAGE_INTERNAL;
                             ternalTotal = internalItms;
@@ -253,15 +258,17 @@ public class Comparator {
      * and adds them to the list of found classes of Structure101
      * @param matrix the parsed matrix that was output by Structure101
      */
-    private void addStructure101Classes(List<List<String>> matrix, boolean classLevel) {
+    private void addStructure101Items(List<List<String>> matrix, boolean classLevel) {
         int id = 0;
+
         for(List<String> row : matrix) {
             // skip the first row, since that contains the headers
             if(id > 0) {
                 String itemName = row.get(ITM_NAME_INDEX);
                 Boolean isInternal = !itemName.startsWith("(unknown)");
                 if(classLevel) isInternal = itemName.startsWith("(") ? false : null;
-                foundItem(itemName, TOOL_NAME.STRUCTURE101, isInternal, matrix.indexOf(row), classLevel);
+                foundItem(itemName, TOOL_NAME.STRUCTURE101, isInternal, id, classLevel);
+
                 for(int i = 1; i < row.size(); i++) {
                     String dependencyCount = row.get(i);
                     if(!dependencyCount.isBlank()) {
@@ -282,7 +289,7 @@ public class Comparator {
      * and adds them to the list of found classes of Pyne
      * @param doc the parsed document that was output by Pyne
      */
-    private void addPyneClasses(Document doc, boolean classLevel) {
+    private void addPyneItems(Document doc, boolean classLevel) {
         // we want to get all nodes called "node" and "edge"
         NodeList nodes = doc.getElementsByTagName("node");
         NodeList edges = doc.getElementsByTagName("edge");
@@ -419,7 +426,24 @@ public class Comparator {
     private SrcItm addNewItem(String itm, TOOL_NAME toolName, Boolean internal, Integer id, boolean classLevel) {
         // check if the class was not already in the classMap by another name (longer/shorter)
         for(String key : itmMap.keySet()) {
-            if(isSame(key, itm)) {
+            String pyneName, s101Name;
+            // determine which string is from which tool
+            if(itmMap.get(key).wasFoundBy(TOOL_NAME.PYNE)) {
+                pyneName = key;
+                s101Name = itm;
+            }
+            else if(itmMap.get(key).wasFoundBy(TOOL_NAME.STRUCTURE101)){
+                pyneName = itm;
+                s101Name = key;
+            }
+            // should never actually happen, but just in case
+            else throw new RuntimeException("Cannot determine which item name is from which tool " +
+                        "to make a comparison between: \"" + key + "\" and \"" + itm + "\"");
+
+            if((pyneName.equals(key) && toolName.equals(TOOL_NAME.PYNE)) ||
+                    (s101Name.equals(key) && toolName.equals(TOOL_NAME.STRUCTURE101)))
+                continue;
+            else if((classLevel && isSameCls(pyneName, s101Name)) || (!classLevel && isSamePkg(pyneName, s101Name))) {
                 // update the existing class by its known name
                 return updateExistingItem(key, toolName, internal);
             }
@@ -436,52 +460,52 @@ public class Comparator {
         return item;
     }
 
-    /**
-     * checks whether 2 strings indicate the same class
-     * @param s1 the first string
-     * @param s2 the second string
-     * @return
-     */
-    public static boolean isSame(String s1, String s2) {
-        String structure101Name;
-        String pyneName;
+    public static boolean isSamePkg(String pynePack, String s101Pack) {
+        if(pynePack.equals(s101Pack)) return true;
 
-        // find out which string is which
-        // since class names cannot have dots in them,
-        // if it contains a dot it must be the full class name including the packages
-        // that's what Pyne does, so we know that is the Pyne String
-        if(s1.contains(".")) {
-            pyneName = s1;
-            structure101Name = s2;
-        }
-        else {
-            pyneName = s2;
-            structure101Name = s1;
+        List<String> s101Parts = new ArrayList<>(Arrays.asList(s101Pack.split("\\.")));
+        List<String> pyneParts = new ArrayList<>(Arrays.asList(pynePack.split("\\.")));
+
+        int s101Ind = s101Parts.size() - 1;
+        int pyneInd = pyneParts.size() - 1;
+
+        while(pyneInd >= 0) {
+            if(s101Ind < 0 || !s101Parts.get(s101Ind).equals(pyneParts.get(pyneInd))) return false;
+
+            s101Ind--;
+            pyneInd--;
         }
 
-        List<String> s101Parts = new ArrayList<>(Arrays.asList(structure101Name.split("_")));
-        List<String> pParts = new ArrayList<>(Arrays.asList(pyneName.split("\\.")));
+        return true;
+    }
+
+
+    public static boolean isSameCls(String pyneName, String s101Name) {
+        if(pyneName.equals(s101Name)) return true;
+
+        List<String> s101Parts = new ArrayList<>(Arrays.asList(s101Name.split("_")));
+        List<String> pyneParts = new ArrayList<>(Arrays.asList(pyneName.split("\\.")));
 
         // split the last part (i.e. the real class name) on underscores, so it will line up with the s101Parts
         // in case the class name itself contains underscores
-        List<String> split = Arrays.asList(pParts.get(pParts.size() - 1).split("_"));
+        List<String> split = Arrays.asList(pyneParts.get(pyneParts.size() - 1).split("_"));
         // remove the un-split version to avoid duplication
-        pParts.remove(pParts.size() - 1);
-        pParts.addAll(split);
+        pyneParts.remove(pyneParts.size() - 1);
+        pyneParts.addAll(split);
 
         int s101Ind = s101Parts.size() - 1;
-        int pInd = pParts.size() - 1;
+        int pyneInd = pyneParts.size() - 1;
 
-        while(pInd >= 0) {
+        while(pyneInd >= 0) {
             if(s101Ind < 0) return true;
-            String p = pParts.get(pInd);
+            String p = pyneParts.get(pyneInd);
             String s = s101Parts.get(s101Ind);
 
             if(!s.startsWith("(") && !p.startsWith(s))
                 return false;
 
             s101Ind--;
-            pInd--;
+            pyneInd--;
         }
 
         return true;

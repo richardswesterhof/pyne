@@ -57,8 +57,8 @@ public class Main {
             Comparator comparator = new Comparator(structure101Matrix, pyneGraph, classLevel).importFileData();
 
             // collect classes
-			System.out.println("Collecting classes");
-            comparator.collectAllClasses();
+			System.out.println("Collecting " + (classLevel ? "classes" : "packages"));
+            comparator.collectAllItems();
 
             // compare packages
 			System.out.println("Comparing packages");
