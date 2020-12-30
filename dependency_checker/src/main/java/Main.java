@@ -12,16 +12,23 @@ import java.io.IOException;
 
 public class Main {
 
+    public enum DETAIL {
+        CLASS,
+        PACKAGE
+    }
+
     public static void main(String[] args) {
         Options options = new Options();
-        options.addOption("s", "structure101-file", true, "The file to use for Structure101's analysis");
-        options.addOption("p", "pyne-file", true, "The file to use for Pyne's analysis");
-        options.addOption("hr", "human-readable", false, "If specified, the file will be formatted to be easier to read, this will lead to (much) bigger file sizes however");
-        options.addOption("indent", false, "If specified, the file will be indented properly to be easier to read. The human-readable option implies this already");
+        options.addRequiredOption("s", "structure101-file", true, "The file to use for Structure101's analysis");
+        options.addRequiredOption("p", "pyne-file", true, "The file to use for Pyne's analysis");
+        options.addOption("hr", "human-readable", false, "If specified, the file will be configured to be easier to read, this will lead to (much) bigger file sizes however");
+        options.addOption("i", "indent", false, "If specified, the file will be indented properly to be easier to read. The human-readable option implies this already");
+        options.addRequiredOption("d", "detail-level", true, "CLASS: compares on a class level, PACKAGE: compares on a package level. Keep in mind that switching modes requires a different Structure101 file!");
 
 
         String structure101Path;
         String pynePath;
+        boolean classLevel = false;
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -30,10 +37,13 @@ public class Main {
             structure101Path = cmd.getOptionValue("s");
             pynePath = cmd.getOptionValue("p");
 
-            if(structure101Path == null || pynePath == null) {
+            if(cmd.getOptionValue("detail-level").equals(DETAIL.CLASS.name())) classLevel = true;
+            else if(cmd.getOptionValue("detail-level").equals(DETAIL.PACKAGE.name())) classLevel = false;
+            else {
                 printHelp(options);
                 System.exit(1);
             }
+
 
             File structure101Matrix = new File(structure101Path);
             File pyneGraph = new File(pynePath);
@@ -44,7 +54,7 @@ public class Main {
 
             // initialize comparator
             System.out.println("Initializing comparator");
-            Comparator comparator = new Comparator(structure101Matrix, pyneGraph, cmd).importFileData();
+            Comparator comparator = new Comparator(structure101Matrix, pyneGraph, classLevel).importFileData();
 
             // collect classes
 			System.out.println("Collecting classes");
@@ -52,11 +62,11 @@ public class Main {
 
             // compare packages
 			System.out.println("Comparing packages");
-            Document doc = comparator.compareResults(cmd.hasOption("hr"));
+            Document doc = comparator.compareResults(cmd.hasOption("human-readable"), classLevel);
 
             // output differences to xml file
             System.out.println("Writing to output file");
-            XMLHandler.writeXML(doc, output, cmd.hasOption("hr") || cmd.hasOption("indent"));
+            XMLHandler.writeXML(doc, output, cmd.hasOption("human-readable") || cmd.hasOption("indent"));
 
             // live happily ever after :)
             System.out.println("Done!");
@@ -73,8 +83,8 @@ public class Main {
             System.err.println("Something went wrong when writing output");
             e.printStackTrace();
         } catch (ParseException e) {
-            System.err.println("Something went wrong when parsing cli arguments");
-            e.printStackTrace();
+            printHelp(options);
+            System.exit(1);
         }
     }
 
