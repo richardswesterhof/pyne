@@ -17,10 +17,10 @@ and the second should be the path to the Pyne graphml file.
 In short, the format should be as follows:
 
 ```
-java -jar dependency_checker.jar [PATH/TO/STRUCTURE101_FILE.csv] [PATH/TO/PYNE_FILE.graphml]
+java -jar dependency_checker.jar -s [PATH/TO/STRUCTURE101_FILE.csv] -p [PATH/TO/PYNE_FILE.graphml] -hr
 ```
 
 e.g.:
 ```
-java -jar dependency_checker.jar ../graph-files/tajo_dependencies_by_structure101.csv ../graph-files/tajo_dependencies_by_pyne.graphml
+java -jar dependency_checker.jar -s ../graph-files/tajo_dependencies_by_structure101.csv -p ../graph-files/tajo_dependencies_by_pyne.graphml -hr
 ```

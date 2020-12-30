@@ -12,11 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import spoon.processing.AbstractProcessor;
-import spoon.reflect.code.BinaryOperatorKind;
-import spoon.reflect.code.CtBinaryOperator;
-import spoon.reflect.code.CtBlock;
-import spoon.reflect.code.CtConstructorCall;
-import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtPackageReference;
@@ -46,7 +42,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
     private class AnnotationConsumer
             implements Consumer<CtAnnotation<? extends Annotation>> {
 
-        private final List<CtType> dependences;
+        private final List<CtTypeReference> dependences;
 
         /**
          * A consumer for annotations, used to get the type and add the
@@ -54,51 +50,15 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
          *
          * @param dependences The list to add the found type to
          */
-        public AnnotationConsumer(List<CtType> dependences) {
+        public AnnotationConsumer(List<CtTypeReference> dependences) {
             this.dependences = dependences;
         }
 
         @Override
         public void accept(CtAnnotation<? extends Annotation> annotation) {
-            dependences.add(annotation.getAnnotationType().getDeclaration());
+            dependences.add(annotation.getAnnotationType());
         }
 
-    }
-
-    /**
-     * A consumer for elements, used to get the type and add the declaration of
-     * it
-     */
-    private class ExecutatbleConsumer implements Consumer<CtElement> {
-
-        private final List<CtType> dependences;
-
-        /**
-         * A consumer for elements, used to get the type and add the declaration
-         * of it
-         *
-         * @param dependences The list to add the found type to
-         */
-        public ExecutatbleConsumer(List<CtType> dependences) {
-            this.dependences = dependences;
-        }
-
-        @Override
-        public void accept(CtElement element) {
-            if (!(element instanceof CtExecutableReference<?>)) {
-                //TODO: should throw error
-                return;
-            }
-            CtExecutableReference executable = (CtExecutableReference) element;
-            try {
-                CtTypeReference executableType = executable.getType();
-                if (executableType != null && executableType.getDeclaration() != null) {
-                    dependences.add(executableType.getTypeDeclaration());
-                }
-            }catch (NullPointerException e){
-                // Ignore spoon errors
-            }
-        }
     }
 
     /**
@@ -186,15 +146,15 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      */
     private void processClassReferences(CtType clazz, VertexClass vertexClass) {
 
-        for (CtType referencedClass : getClassReferences(clazz)) {
-            if (referencedClass == null || referencedClass.getReference() == null) {
+        for (CtTypeReference referencedClass : getClassReferences(clazz)) {
+
+            if (referencedClass == null) {
                 continue;
             }
-            VertexClass referencedClassVertex
-                        = getOrCreateVertexClass(referencedClass.getReference());
-                vertexClass.addDependOnClass(referencedClassVertex);
-        }
 
+            VertexClass referencedClassVertex = getOrCreateVertexClass(referencedClass);
+            vertexClass.addDependOnClass(referencedClassVertex);
+        }
     }
 
     /**
@@ -202,24 +162,25 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      *
      * @param clazz The class being processed
      */
-    private List<CtType> getClassReferences(CtType clazz) {
-        List<CtType> references = new ArrayList<>();
+    private List<CtTypeReference> getClassReferences(CtType clazz) {
+        List<CtTypeReference> references = new ArrayList<>();
 
         // Sets up the consumers that will add the references.
         AnnotationConsumer annotationConsumer
                 = new AnnotationConsumer(references);
-        ExecutatbleConsumer executatbleConsumer
-                = new ExecutatbleConsumer(references);
 
         //TODO: this is where i add the constructors to the list
         // Get all methods and constructors and loop over them
         ArrayList<CtExecutable<?>> executables = new ArrayList<>();
         executables.addAll((Set<CtExecutable<?>>) clazz.getMethods());
         if (clazz instanceof CtClass) {
-            System.out.println("is class");
             executables.addAll((Set<CtExecutable<?>>) ((CtClass) clazz).getConstructors());
         }
         for (CtExecutable<?> ctMethod : executables) {
+
+            //add return value of method
+            references.add(ctMethod.getType());
+            tempCheck(ctMethod.getType(), clazz, ctMethod.toString());
 
             // Get binaryOperators used in the method, so we can check if they 
             // are instanceof elements and add the dependency if so.
@@ -228,15 +189,17 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
             for (CtBinaryOperator<?> element : BinaryElements) {
                 if (element.getKind().equals(BinaryOperatorKind.INSTANCEOF)) {
-                    references.add(element.getRightHandOperand().getType()
-                            .getTypeDeclaration());
+                    references.add(element.getRightHandOperand().getType());
+                    tempCheck(element.getRightHandOperand().getType(), clazz, element.toString());
                 }
             }
 
-            // Add all references for annotations this method uses
+            // Add all paramater references and annotations
             ctMethod.getAnnotations().forEach(annotationConsumer);
             for (CtParameter<?> parameter : ctMethod.getParameters()) {
                 parameter.getAnnotations().forEach(annotationConsumer);
+                references.add(parameter.getType());
+                tempCheck(parameter.getType(), clazz, parameter.toString());
             }
 
             // Get the body if the method has one
@@ -249,38 +212,67 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             List<CtConstructorCall<?>> constructorElements = body
                     .getElements(new TypeFilter<>(CtConstructorCall.class));
 
+            //add all references for the constructor calls in the method
+            for(CtConstructorCall<?> c : constructorElements){
+                references.add(c.getType());
+                tempCheck(c.getType(), clazz, c.toString());
+            }
+
             // Get all invocations in the method
             List<CtInvocation<?>> invocationElements = body
                     .getElements(new TypeFilter<>(CtInvocation.class));
 
-            // Add all references from the constructors
-            constructorElements.forEach((constructorCall) -> {
-                constructorCall.getDirectChildren()
-                        .forEach(executatbleConsumer);
-            });
 
-            // Add all references from the invocations.
-            invocationElements.forEach((statement) -> {
-                statement.getDirectChildren().forEach(executatbleConsumer);
-            });
-
+            for(CtInvocation<?> c : invocationElements){
+                if(c.getExecutable().getDeclaringType() == null){
+                    if(clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")) {
+                        System.out.println("Pyne cannot find declaration of " + c + "with direct children" + c.getDirectChildren());
+                        System.out.println("It has the type: "+c.getType());
+                        for (CtElement child : c.getDirectChildren()) {
+                            System.out.println(child + " is actually invocation " + (child instanceof CtInvocation));
+                            System.out.println(child + " is actually CtExecutableReference " + (child instanceof CtExecutableReference));
+                            if (child instanceof CtExecutableReference)
+                                System.out.println(child + " declaring type: " + ((CtExecutableReference) child).getDeclaringType());
+                        }
+                    }
+                }else {
+                    references.add(c.getExecutable().getDeclaringType());
+                    if(tempCheck(c.getExecutable().getDeclaringType(), clazz, c.toString())){
+                        System.out.println("found "+ c);
+                        System.out.println("actual type arguments "+ c.getActualTypeArguments());
+                        System.out.println("direct children "+ c.getDirectChildren());
+                    }
+                }
+            }
         }
 
         // Get all annotations the class uses and add them
         clazz.getAnnotations().forEach(annotationConsumer);
 
-        // add all the fields annontations
+        // add all the fields types and annotations
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
+            references.add(field.getType());
+            tempCheck(field.getType(), clazz, field.toString());
         }
-
-        //TODO: this is where we check for inherent classes
-        //for(CtType<?> nestedType: (List<CtType<?>>) clazz.getNestedTypes()){
-
-        //}
 
         return references;
     }
+
+    private boolean tempCheck(CtTypeReference t, CtType clazz, String source){
+        if(//t.getQualifiedName().contains("PlanProto.ProjectionNode") ||
+                //t.getQualifiedName().contains("org.apache.tajo.storage.StorageFragmentProtos") ||
+               // t.getQualifiedName().contains("PlanProto.RootNode") ||
+                //t.getQualifiedName().contains("Schema") ||
+                clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")){
+            System.out.println("\nfound extra dependency "+t.getQualifiedName());
+            System.out.println("for class "+clazz.getQualifiedName());
+            System.out.println("for source "+source);
+            return true;
+        }
+        return false;
+    }
+
 
     /**
      * Gets the vertex class by the reference. If it does not exists a new
@@ -291,6 +283,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      * @return The found vertex, or a newly created one if it does not exists
      */
     private VertexClass getOrCreateVertexClass(CtTypeReference clazz) {
+
         // Find the vertex class by name
         VertexClass vertexClass = VertexClass
                 .getVertexClassByName(framedGraph, clazz.getQualifiedName());

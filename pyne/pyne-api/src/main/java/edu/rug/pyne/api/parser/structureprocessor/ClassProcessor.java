@@ -71,7 +71,7 @@ public class ClassProcessor extends AbstractProcessor<CtClass<?>> {
                     return;
                 }
             }
-            System.out.println(clazz.getQualifiedName());
+
             // Try to get the vertex by name
             VertexClass vertex = VertexClass.getVertexClassByName(
                     framedGraph, clazz.getQualifiedName()
