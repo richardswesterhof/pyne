@@ -12,11 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import spoon.processing.AbstractProcessor;
-import spoon.reflect.code.BinaryOperatorKind;
-import spoon.reflect.code.CtBinaryOperator;
-import spoon.reflect.code.CtBlock;
-import spoon.reflect.code.CtConstructorCall;
-import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
 import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtPackageReference;
@@ -156,9 +152,8 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
                 continue;
             }
 
-            VertexClass referencedClassVertex
-                        = getOrCreateVertexClass(referencedClass);
-                vertexClass.addDependOnClass(referencedClassVertex);
+            VertexClass referencedClassVertex = getOrCreateVertexClass(referencedClass);
+            vertexClass.addDependOnClass(referencedClassVertex);
         }
     }
 
@@ -185,6 +180,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
             //add return value of method
             references.add(ctMethod.getType());
+            tempCheck(ctMethod.getType(), clazz, ctMethod.toString());
 
             // Get binaryOperators used in the method, so we can check if they 
             // are instanceof elements and add the dependency if so.
@@ -194,6 +190,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             for (CtBinaryOperator<?> element : BinaryElements) {
                 if (element.getKind().equals(BinaryOperatorKind.INSTANCEOF)) {
                     references.add(element.getRightHandOperand().getType());
+                    tempCheck(element.getRightHandOperand().getType(), clazz, element.toString());
                 }
             }
 
@@ -202,6 +199,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             for (CtParameter<?> parameter : ctMethod.getParameters()) {
                 parameter.getAnnotations().forEach(annotationConsumer);
                 references.add(parameter.getType());
+                tempCheck(parameter.getType(), clazz, parameter.toString());
             }
 
             // Get the body if the method has one
@@ -217,17 +215,33 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             //add all references for the constructor calls in the method
             for(CtConstructorCall<?> c : constructorElements){
                 references.add(c.getType());
+                tempCheck(c.getType(), clazz, c.toString());
             }
 
             // Get all invocations in the method
             List<CtInvocation<?>> invocationElements = body
                     .getElements(new TypeFilter<>(CtInvocation.class));
 
+
             for(CtInvocation<?> c : invocationElements){
                 if(c.getExecutable().getDeclaringType() == null){
-                    System.out.println("Pyne cannot find declaration of "+ c);
+                    if(clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")) {
+                        System.out.println("Pyne cannot find declaration of " + c + "with direct children" + c.getDirectChildren());
+                        System.out.println("It has the type: "+c.getType());
+                        for (CtElement child : c.getDirectChildren()) {
+                            System.out.println(child + " is actually invocation " + (child instanceof CtInvocation));
+                            System.out.println(child + " is actually CtExecutableReference " + (child instanceof CtExecutableReference));
+                            if (child instanceof CtExecutableReference)
+                                System.out.println(child + " declaring type: " + ((CtExecutableReference) child).getDeclaringType());
+                        }
+                    }
                 }else {
                     references.add(c.getExecutable().getDeclaringType());
+                    if(tempCheck(c.getExecutable().getDeclaringType(), clazz, c.toString())){
+                        System.out.println("found "+ c);
+                        System.out.println("actual type arguments "+ c.getActualTypeArguments());
+                        System.out.println("direct children "+ c.getDirectChildren());
+                    }
                 }
             }
         }
@@ -239,9 +253,24 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
             references.add(field.getType());
+            tempCheck(field.getType(), clazz, field.toString());
         }
 
         return references;
+    }
+
+    private boolean tempCheck(CtTypeReference t, CtType clazz, String source){
+        if(//t.getQualifiedName().contains("PlanProto.ProjectionNode") ||
+                //t.getQualifiedName().contains("org.apache.tajo.storage.StorageFragmentProtos") ||
+               // t.getQualifiedName().contains("PlanProto.RootNode") ||
+                //t.getQualifiedName().contains("Schema") ||
+                clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")){
+            System.out.println("\nfound extra dependency "+t.getQualifiedName());
+            System.out.println("for class "+clazz.getQualifiedName());
+            System.out.println("for source "+source);
+            return true;
+        }
+        return false;
     }
 
 
@@ -254,6 +283,7 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
      * @return The found vertex, or a newly created one if it does not exists
      */
     private VertexClass getOrCreateVertexClass(CtTypeReference clazz) {
+
         // Find the vertex class by name
         VertexClass vertexClass = VertexClass
                 .getVertexClassByName(framedGraph, clazz.getQualifiedName());
