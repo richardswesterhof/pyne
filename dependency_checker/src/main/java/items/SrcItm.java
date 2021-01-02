@@ -1,6 +1,6 @@
 package items;
 
-import functionality.Comparator;
+import analysis.Comparator;
 
 /**
  * represents any item that will be looked for that is present in the source code

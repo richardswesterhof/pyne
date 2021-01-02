@@ -1,6 +1,6 @@
 package items;
 
-import functionality.Comparator;
+import analysis.Comparator;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * represents any item that will be looked for
+ * represents any item that will be looked for by tools
  * i.e. classes, packages, dependencies
  */
 public abstract class Itm {

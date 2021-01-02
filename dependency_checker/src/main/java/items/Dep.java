@@ -1,12 +1,15 @@
 package items;
 
-import functionality.Comparator;
+import analysis.Comparator;
 
+/**
+ * class to represent a dependency found by a tool
+ */
 public class Dep extends Itm {
 
-    private SrcItm from;
-    private SrcItm to;
-    private int amount;
+    private final SrcItm from;
+    private final SrcItm to;
+    private final int amount;
 
     public Dep(SrcItm from, SrcItm to, int amount, Comparator.TOOL_NAME found) {
         super(null, found);
