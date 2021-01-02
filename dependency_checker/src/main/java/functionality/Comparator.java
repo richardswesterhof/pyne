@@ -274,6 +274,9 @@ public class Comparator {
                     if(!dependencyCount.isBlank()) {
                         String from = matrix.get(i).get(ITM_NAME_INDEX);
                         Boolean isFromInternal = !from.startsWith("(unknown)");
+                        // since structure101 doesn't always start external classes with "("
+                        // we can only tell when it definitely is internal,
+                        // but we can never be sure it is external if "(" is missing
                         if(classLevel) isFromInternal = from.startsWith("(") ? false : null;
                         foundDependency(from, isFromInternal, i, itemName, isInternal, id,
                                 TOOL_NAME.STRUCTURE101, Integer.parseInt(dependencyCount), classLevel);

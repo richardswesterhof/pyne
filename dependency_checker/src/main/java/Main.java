@@ -19,10 +19,10 @@ public class Main {
 
     public static void main(String[] args) {
         Options options = new Options();
-        options.addRequiredOption("s", "structure101-file", true, "The file to use for Structure101's analysis");
-        options.addRequiredOption("p", "pyne-file", true, "The file to use for Pyne's analysis");
-        options.addOption("hr", "human-readable", false, "If specified, the file will be configured to be easier to read, this will lead to (much) bigger file sizes however");
-        options.addOption("i", "indent", false, "If specified, the file will be indented properly to be easier to read. The human-readable option implies this already");
+        options.addRequiredOption("s", "structure101-file", true, "The file to use from Structure101's analysis");
+        options.addRequiredOption("p", "pyne-file", true, "The file to use from Pyne's analysis");
+        options.addOption("hr", "human-readable", false, "If provided, the file will be configured to be easier to read, this will lead to (much) bigger file sizes however");
+        options.addOption("i", "indent", false, "If provided, the file will be indented properly to be easier to read. The human-readable option implies this already");
         options.addRequiredOption("d", "detail-level", true, "CLASS: compares on a class level, PACKAGE: compares on a package level. Keep in mind that switching modes requires a different Structure101 file!");
 
 
