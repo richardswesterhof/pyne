@@ -1,5 +1,5 @@
-import functionality.Comparator;
-import functionality.XMLHandler;
+import analysis.Comparator;
+import xmlUtils.XMLHandler;
 import org.apache.commons.cli.*;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;

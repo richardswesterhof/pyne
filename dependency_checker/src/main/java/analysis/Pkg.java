@@ -1,9 +1,9 @@
-package functionality;
+package analysis;
 
 public class Pkg {
 
-    private String name;
-    private Boolean internal;
+    private final String name;
+    private final Boolean internal;
 
     public Pkg(String name, Boolean internal) {
         this.name = name;

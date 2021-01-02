@@ -1,4 +1,4 @@
-package functionality;
+package analysis;
 
 import com.opencsv.CSVReader;
 import items.Dep;
@@ -7,6 +7,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+import xmlUtils.XMLHandler;
+import xmlUtils.XML_TAG;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.ParserConfigurationException;
@@ -16,7 +18,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static functionality.XMLHandler.*;
+import static xmlUtils.XMLHandler.*;
 
 public class Comparator {
 
@@ -108,12 +110,16 @@ public class Comparator {
 
     /**
      * collects the classes for all tools
+     * @return this, to allow it to be chained with the other public methods.
+     *         this will allow an entire analysis to be done in one line, if the user desires so
      */
-    public void collectAllItems() {
+    public Comparator collectAllItems() {
         addStructure101Items(structure101Matrix, classLevel);
         addPyneItems(pyneDoc, classLevel);
         // this is where one would add calls to other tool specific methods
         // in case a new tool joins the comparison
+
+        return this;
     }
 
     /**
@@ -130,11 +136,11 @@ public class Comparator {
         Document doc = classLevel ? initClsDoc(dBuilder, toolNames) : initPkgDoc(dBuilder, toolNames);
 
         // get the three children of the root element
-        Node allDeps = doc.getElementsByTagName(ALL_DEPS).item(0);
+        Node allDeps = doc.getElementsByTagName(XML_TAG.ALL_DEPS).item(0);
         Node allItms = classLevel ?
-                doc.getElementsByTagName(ALL_CLSS).item(0) :
-                doc.getElementsByTagName(ALL_PKGS).item(0);
-        Node tools = doc.getElementsByTagName(TOOLS).item(0);
+                doc.getElementsByTagName(XML_TAG.ALL_CLSS).item(0) :
+                doc.getElementsByTagName(XML_TAG.ALL_PKGS).item(0);
+        Node tools = doc.getElementsByTagName(XML_TAG.TOOLS).item(0);
 
         int totalItms = itmMap.size();
         int totalDeps = depSet.size();
@@ -149,12 +155,12 @@ public class Comparator {
         }
 
         // set the count of total classes and dependencies in the document
-        setNodeAttribute(allItms, COUNT, Integer.toString(totalItms));
-        setNodeAttribute(allItms, COUNT_INTERNAL, Integer.toString(internalItms));
-        setNodeAttribute(allItms, COUNT_EXTERNAL, Integer.toString(externalItms));
-        setNodeAttribute(allItms, COUNT_UNKNOWN, Integer.toString(unknownItms));
+        setNodeAttribute(allItms, XML_TAG.COUNT, Integer.toString(totalItms));
+        setNodeAttribute(allItms, XML_TAG.COUNT_INTERNAL, Integer.toString(internalItms));
+        setNodeAttribute(allItms, XML_TAG.COUNT_EXTERNAL, Integer.toString(externalItms));
+        setNodeAttribute(allItms, XML_TAG.COUNT_UNKNOWN, Integer.toString(unknownItms));
 
-        setNodeAttribute(allDeps, COUNT, Integer.toString(totalDeps));
+        setNodeAttribute(allDeps, XML_TAG.COUNT, Integer.toString(totalDeps));
 
         Map<TOOL_NAME, Node> toolNodeMap = new HashMap<>();
 
@@ -162,7 +168,7 @@ public class Comparator {
         for(int i = 0; i < toolNodes.getLength(); i++) {
             Node node = toolNodes.item(i);
             // get the TOOL_NAME from the name of the node
-            TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+            TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(XML_TAG.NAME).getTextContent());
             toolNodeMap.put(tool, node);
         }
 
@@ -176,34 +182,34 @@ public class Comparator {
             // check for each tool if it was found this class
             for(Node node : toolNodeMap.values()) {
                 NodeList childNodes = node.getChildNodes();
-                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(XML_TAG.NAME).getTextContent());
 
                 for(int i = 0; i < childNodes.getLength(); i++) {
                     Node child = childNodes.item(i);
-                    if((itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? FOUND_CLSS : FOUND_PKGS)) ||
-                            (!itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? MISSED_CLSS : MISSED_PKGS)))
+                    if((itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? XML_TAG.FOUND_CLSS : XML_TAG.FOUND_PKGS)) ||
+                            (!itm.wasFoundBy(tool) && child.getNodeName().equals(classLevel ? XML_TAG.MISSED_CLSS : XML_TAG.MISSED_PKGS)))
                     {
                         // get the appropriate field names depending on whether this class is in- or external
                         String ternal, ternalPercName;
                         int ternalTotal;
                         if(itm.isInternal() == null) {
-                            ternal = COUNT_UNKNOWN;
-                            ternalPercName = PERCENTAGE_UNKNOWN;
+                            ternal = XML_TAG.COUNT_UNKNOWN;
+                            ternalPercName = XML_TAG.PERCENTAGE_UNKNOWN;
                             ternalTotal = unknownItms;
                         }
                         else if(itm.isInternal()) {
-                            ternal = COUNT_INTERNAL;
-                            ternalPercName = PERCENTAGE_INTERNAL;
+                            ternal = XML_TAG.COUNT_INTERNAL;
+                            ternalPercName = XML_TAG.PERCENTAGE_INTERNAL;
                             ternalTotal = internalItms;
                         }
                         else {
-                            ternal = COUNT_EXTERNAL;
-                            ternalPercName = PERCENTAGE_EXTERNAL;
+                            ternal = XML_TAG.COUNT_EXTERNAL;
+                            ternalPercName = XML_TAG.PERCENTAGE_EXTERNAL;
                             ternalTotal = externalItms;
                         }
 
                         // get the current count from the tree
-                        int count = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
+                        int count = Integer.parseInt(child.getAttributes().getNamedItem(XML_TAG.COUNT).getTextContent());
                         int ternalCount = Integer.parseInt(child.getAttributes().getNamedItem(ternal).getTextContent());
 
                         // recalculate numbers
@@ -213,9 +219,9 @@ public class Comparator {
                         float ternalPerc = (float)ternalCount / ternalTotal * 100;
 
                         // set the new values in the tree and add class to the list
-                        setNodeAttribute(child, COUNT, Integer.toString(count));
+                        setNodeAttribute(child, XML_TAG.COUNT, Integer.toString(count));
                         setNodeAttribute(child, ternal, Integer.toString(ternalCount));
-                        setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
+                        setNodeAttribute(child, XML_TAG.PERCENTAGE_TOTAL, Float.toString(perc));
                         setNodeAttribute(child, ternalPercName, Float.toString(ternalPerc));
                         // create a class or package, depending on which detail level was selected
                         // and create the correct detail version of the item
@@ -243,22 +249,22 @@ public class Comparator {
             // check for each tool if it was found this dependency
             for(Node node : toolNodeMap.values()) {
                 NodeList childNodes = node.getChildNodes();
-                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(NAME).getTextContent());
+                TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(XML_TAG.NAME).getTextContent());
                 for(int i = 0; i < childNodes.getLength(); i++) {
                     Node child = childNodes.item(i);
-                    if((dep.wasFoundBy(tool) && child.getNodeName().equals(FOUND_DEPS)) ||
-                            !dep.wasFoundBy(tool) && child.getNodeName().equals(MISSED_DEPS))
+                    if((dep.wasFoundBy(tool) && child.getNodeName().equals(XML_TAG.FOUND_DEPS)) ||
+                            !dep.wasFoundBy(tool) && child.getNodeName().equals(XML_TAG.MISSED_DEPS))
                     {
                         // get the current count from the tree
-                        int count = Integer.parseInt(child.getAttributes().getNamedItem(COUNT).getTextContent());
+                        int count = Integer.parseInt(child.getAttributes().getNamedItem(XML_TAG.COUNT).getTextContent());
 
                         // recalculate numbers
                         count++;
                         float perc = (float)count / totalDeps * 100;
 
                         // set the new values in the tree and add dependency to the list
-                        setNodeAttribute(child, COUNT, Integer.toString(count));
-                        setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
+                        setNodeAttribute(child, XML_TAG.COUNT, Integer.toString(count));
+                        setNodeAttribute(child, XML_TAG.PERCENTAGE_TOTAL, Float.toString(perc));
 
                         // create simple or extended dependency based on cli option
                         child.appendChild(outputDetail.equals(OUTPUT_DETAIL.HUMAN_READABLE) ?
