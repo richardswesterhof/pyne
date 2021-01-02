@@ -28,6 +28,12 @@ public class Comparator {
         PYNE
     }
 
+    public enum OUTPUT_DETAIL {
+        NORMAL,
+        HUMAN_READABLE,
+        COMPACT
+    }
+
     private Map<String, SrcItm> itmMap = new HashMap<>();
     private Set<Dep> depSet = new HashSet<>();
 
@@ -40,14 +46,16 @@ public class Comparator {
 
     private static final int ITM_NAME_INDEX = 0;
 
-    DocumentBuilder dBuilder;
+    private DocumentBuilder dBuilder;
 
-    boolean classLevel;
+    private boolean classLevel;
+    private OUTPUT_DETAIL outputDetail;
 
-    public Comparator(File structure101File, File pyneFile, boolean classLevel) {
+    public Comparator(File structure101File, File pyneFile, boolean classLevel, OUTPUT_DETAIL outputDetail) {
         this.structure101File = structure101File;
         this.pyneFile = pyneFile;
         this.classLevel = classLevel;
+        this.outputDetail = outputDetail;
     }
 
     /**
@@ -110,12 +118,9 @@ public class Comparator {
 
     /**
      * checks for each found class which tool was and wasn't able to find it, and reports the results
-     * @param extensive whether or not the resulting tree should be focussed on being easier to read,
-     *                  this will lead to a much bigger tree!
-     * @param classLevel whether or not to compare on a class level
      * @return a Document tree containing the results per tool
      */
-    public Document compareResults(boolean extensive, boolean classLevel) {
+    public Document compareResults() {
         // perform an ancient ritual to summon a List<String> from an Enum
         List<String> toolNames = new ArrayList<>(Arrays.asList(Stream.of(TOOL_NAME.values()).map(TOOL_NAME::toString).toArray(String[]::new)));
         // and make sure to remove the ideal tool, since it will be handled differently from normal tools
@@ -161,9 +166,11 @@ public class Comparator {
             toolNodeMap.put(tool, node);
         }
 
-        // check which tools found which classes
+        // check which tools found which items
         for(SrcItm itm : itmMap.values()) {
-            // first add this classes to the list of all classes
+            // first add this classes to the list of all classes/packages
+            // when creating the list of all classes/packages,
+            // we always want to get the complete versions
             allItms.appendChild(classLevel ? createClass(doc, itm) : createPackage(doc, itm));
 
             // check for each tool if it was found this class
@@ -210,7 +217,18 @@ public class Comparator {
                         setNodeAttribute(child, ternal, Integer.toString(ternalCount));
                         setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
                         setNodeAttribute(child, ternalPercName, Float.toString(ternalPerc));
-                        child.appendChild(createClass(doc, itm));
+                        // create a class or package, depending on which detail level was selected
+                        // and create the correct detail version of the item
+                        child.appendChild(classLevel ?
+                                (outputDetail.equals(OUTPUT_DETAIL.COMPACT) ?
+                                        createCompactClass(doc, itm) :
+                                        createClass(doc, itm)
+                                ) :
+                                (outputDetail.equals(OUTPUT_DETAIL.COMPACT) ?
+                                        createCompactPackage(doc, itm) :
+                                        createPackage(doc, itm)
+                                )
+                        );
                     }
                 }
             }
@@ -219,7 +237,7 @@ public class Comparator {
         // same for found dependencies
         for(Dep dep : depSet) {
             // create simple or extended dependency based on cli option
-            if(extensive) allDeps.appendChild(createExtendedDependency(doc, dep));
+            if(outputDetail.equals(OUTPUT_DETAIL.HUMAN_READABLE)) allDeps.appendChild(createExtendedDependency(doc, dep));
             else allDeps.appendChild(createSimpleDependency(doc, dep));
 
             // check for each tool if it was found this dependency
@@ -243,8 +261,10 @@ public class Comparator {
                         setNodeAttribute(child, PERCENTAGE_TOTAL, Float.toString(perc));
 
                         // create simple or extended dependency based on cli option
-                        if(extensive) child.appendChild(createExtendedDependency(doc, dep));
-                        else child.appendChild(createSimpleDependency(doc, dep));
+                        child.appendChild(outputDetail.equals(OUTPUT_DETAIL.HUMAN_READABLE) ?
+                                createExtendedDependency(doc, dep) :
+                                createSimpleDependency(doc, dep)
+                        );
                     }
                 }
             }

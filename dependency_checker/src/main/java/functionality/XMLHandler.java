@@ -124,22 +124,37 @@ public class XMLHandler {
         return initDoc(dBuilder, toolNames, false);
     }
 
-    public static Element createClass(Document doc, SrcItm cls) {
-        return createItem(doc, cls.getName(), cls.isInternal(), cls.getToolId(Comparator.TOOL_NAME.IDEAL), true);
-    }
-
     private static Element createItem(Document doc, String itm, Boolean internal, Integer id, boolean classLevel) {
-        Element item = doc.createElement(classLevel ? CLASS : PACKAGE);
-        item.setAttribute(ID, id.toString());
+        Element item = createCompactItem(doc, itm, internal, id, classLevel);
         item.setAttribute(INTERNAL, internal == null ? "" : internal.toString());
         item.appendChild(doc.createTextNode(itm));
 
         return item;
     }
 
+    private static Element createCompactItem(Document doc, String itm, Boolean internal, Integer id, boolean classLevel) {
+        Element item = doc.createElement(classLevel ? CLASS : PACKAGE);
+        item.setAttribute(ID, id.toString());
+
+        return item;
+    }
+
+    public static Element createClass(Document doc, SrcItm cls) {
+        return createItem(doc, cls.getName(), cls.isInternal(), cls.getToolId(Comparator.TOOL_NAME.IDEAL), true);
+    }
+
+    public static Element createCompactClass(Document doc, SrcItm cls) {
+        return createCompactItem(doc, cls.getName(), cls.isInternal(), cls.getToolId(Comparator.TOOL_NAME.IDEAL), true);
+    }
+
     public static Element createPackage(Document doc, SrcItm pkg) {
         return createItem(doc, pkg.getName(), pkg.isInternal(), pkg.getToolId(Comparator.TOOL_NAME.IDEAL), false);
     }
+
+    public static Element createCompactPackage(Document doc, SrcItm pkg) {
+        return createCompactItem(doc, pkg.getName(), pkg.isInternal(), pkg.getToolId(Comparator.TOOL_NAME.IDEAL), false);
+    }
+
 
     private static Element createList(Document template, String listName) {
         Element list = template.createElement(listName);
@@ -183,25 +198,6 @@ public class XMLHandler {
         dependency.appendChild(doc.createTextNode(""));
 
         return dependency;
-    }
-
-    public static void addAllItems(Document doc, Node itmListNode, Set<SrcItm> classes, boolean classLevel) {
-        for(SrcItm itm : classes) {
-            itmListNode.appendChild(classLevel ? createClass(doc, itm) : createPackage(doc, itm));
-        }
-    }
-
-    public static void addAllItems(Document doc, Node pkgListNode,
-                                   Set<SrcItm> internalItms, Set<SrcItm> externalItms, boolean classLevel)
-    {
-        addAllItems(doc, pkgListNode, internalItms, classLevel);
-        addAllItems(doc, pkgListNode, externalItms, classLevel);
-    }
-
-    public static void addAllSimpleDependencies(Document doc, Node depListNode, Set<Dep> dependencies) {
-        for(Dep dep : dependencies) {
-            depListNode.appendChild(createSimpleDependency(doc, dep));
-        }
     }
 
     public static void addAllExtendedDependencies(Document doc, Node depListNode, Set<Dep> dependencies) {

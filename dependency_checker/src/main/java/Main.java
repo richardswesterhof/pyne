@@ -21,14 +21,16 @@ public class Main {
         Options options = new Options();
         options.addRequiredOption("s", "structure101-file", true, "The file to use from Structure101's analysis");
         options.addRequiredOption("p", "pyne-file", true, "The file to use from Pyne's analysis");
-        options.addOption("hr", "human-readable", false, "If provided, the file will be configured to be easier to read, this will lead to (much) bigger file sizes however");
+        options.addOption("hr", "human-readable", false, "If provided, the file will be configured to be easier to read, this will lead to (much) bigger file sizes however. Cannot be used in combination with \"compact\"");
         options.addOption("i", "indent", false, "If provided, the file will be indented properly to be easier to read. The human-readable option implies this already");
         options.addRequiredOption("d", "detail-level", true, "CLASS: compares on a class level, PACKAGE: compares on a package level. Keep in mind that switching modes requires a different Structure101 file!");
+        options.addOption("c", "compact", false, "If provided, the file will be generated to contain minimal duplicate data, to reduce the file size as much as possible. Cannot be used in combination with \"human-readable\"");
 
 
         String structure101Path;
         String pynePath;
         boolean classLevel = false;
+        Comparator.OUTPUT_DETAIL outputDetail = Comparator.OUTPUT_DETAIL.NORMAL;
 
         try {
             CommandLineParser parser = new DefaultParser();
@@ -44,6 +46,16 @@ public class Main {
                 System.exit(1);
             }
 
+            if(cmd.hasOption("human-readable")) {
+                if(cmd.hasOption("compact")) {
+                    System.err.println("The \"human-readable\" option and the \"compact\" option cannot be used together");
+                    printHelp(options);
+                    System.exit(1);
+                }
+                else outputDetail = Comparator.OUTPUT_DETAIL.HUMAN_READABLE;
+            }
+            else if(cmd.hasOption("compact")) outputDetail = Comparator.OUTPUT_DETAIL.COMPACT;
+
 
             File structure101Matrix = new File(structure101Path);
             File pyneGraph = new File(pynePath);
@@ -54,15 +66,15 @@ public class Main {
 
             // initialize comparator
             System.out.println("Initializing comparator");
-            Comparator comparator = new Comparator(structure101Matrix, pyneGraph, classLevel).importFileData();
+            Comparator comparator = new Comparator(structure101Matrix, pyneGraph, classLevel, outputDetail).importFileData();
 
             // collect classes
 			System.out.println("Collecting " + (classLevel ? "classes" : "packages"));
             comparator.collectAllItems();
 
             // compare packages
-			System.out.println("Comparing packages");
-            Document doc = comparator.compareResults(cmd.hasOption("human-readable"), classLevel);
+			System.out.println("Comparing " + (classLevel ? "classes" : "packages"));
+            Document doc = comparator.compareResults();
 
             // output differences to xml file
             System.out.println("Writing to output file");
