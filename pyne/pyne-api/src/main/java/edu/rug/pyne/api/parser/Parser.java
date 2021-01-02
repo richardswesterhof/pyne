@@ -301,9 +301,8 @@ public class Parser {
         launcher.getEnvironment().setNoClasspath(true);
         launcher.getEnvironment().setShouldCompile(false);
         launcher.getEnvironment().setComplianceLevel(9);
-        //TODO: instead of getting the source directories, we just give it the root directory
-        //launcher.addInputResource(rootDirectory.getAbsolutePath());
-        //LOGGER.info("Added directory to input resource: " + rootDirectory.getAbsolutePath());
+
+        //retrieve the source directories
         findSourceDirectories().forEach(f -> {
             launcher.addInputResource(f.getAbsolutePath());
             LOGGER.info("Added directory to input resource: " + f.getAbsolutePath());
@@ -408,8 +407,8 @@ public class Parser {
             sourceDirs = stream.map(Path::toFile)
                     .filter(File::isDirectory)
                     .filter(f -> f.toPath().endsWith("src/main") || f.toPath().endsWith("src/java"))
-                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
-                    .filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
+                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(testKeyword))
+                    //.filter(f -> !f.getAbsolutePath().toLowerCase().contains(exampleKeyword))
                     .collect(Collectors.toSet());
             if (sourceDirs.isEmpty()){
                 LOGGER.warn("Could not find any non-test Java source directory recursively. Using generic 'src'.");

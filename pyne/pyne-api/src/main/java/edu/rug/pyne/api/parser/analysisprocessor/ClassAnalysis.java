@@ -2,7 +2,6 @@ package edu.rug.pyne.api.parser.analysisprocessor;
 
 import com.syncleus.ferma.FramedGraph;
 import edu.rug.pyne.api.parser.Parser;
-import edu.rug.pyne.api.parser.structureprocessor.ClassProcessor;
 import edu.rug.pyne.api.structure.VertexClass;
 import edu.rug.pyne.api.structure.VertexPackage;
 import java.io.File;
@@ -11,16 +10,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import spoon.processing.AbstractProcessor;
 import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
-import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.filter.TypeFilter;
 
-//TODO: this really needs a refactor
-//TODO: fucking empty catch statements
+
 /**
  * This a analysis processor. It takes the source code class and analyzes the
  * dependencies it has.
@@ -34,6 +34,12 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
 
     // The parser containing additional information
     private final Parser parser;
+
+    // Create a logger
+    private static final Logger LOGGER
+            = LogManager.getLogger(ClassAnalysis.class);
+
+    private long counter = 0;
 
     /**
      * A consumer for annotations, used to get the type and add the declaration
@@ -169,41 +175,39 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         AnnotationConsumer annotationConsumer
                 = new AnnotationConsumer(references);
 
-        //TODO: this is where i add the constructors to the list
-        // Get all methods and constructors and loop over them
+        //Creates a list of methods and constructors
         ArrayList<CtExecutable<?>> executables = new ArrayList<>();
         executables.addAll((Set<CtExecutable<?>>) clazz.getMethods());
         if (clazz instanceof CtClass) {
             executables.addAll((Set<CtExecutable<?>>) ((CtClass) clazz).getConstructors());
         }
-        for (CtExecutable<?> ctMethod : executables) {
+
+        //retrieve the dependencies out of all the methods and constructors
+        for (CtExecutable<?> ctExecutable : executables) {
 
             //add return value of method
-            references.add(ctMethod.getType());
-            tempCheck(ctMethod.getType(), clazz, ctMethod.toString());
+            references.add(ctExecutable.getType());
 
             // Get binaryOperators used in the method, so we can check if they 
             // are instanceof elements and add the dependency if so.
-            List<CtBinaryOperator<?>> BinaryElements = ctMethod
+            List<CtBinaryOperator<?>> BinaryElements = ctExecutable
                     .getElements(new TypeFilter<>(CtBinaryOperator.class));
 
             for (CtBinaryOperator<?> element : BinaryElements) {
                 if (element.getKind().equals(BinaryOperatorKind.INSTANCEOF)) {
                     references.add(element.getRightHandOperand().getType());
-                    tempCheck(element.getRightHandOperand().getType(), clazz, element.toString());
                 }
             }
 
             // Add all paramater references and annotations
-            ctMethod.getAnnotations().forEach(annotationConsumer);
-            for (CtParameter<?> parameter : ctMethod.getParameters()) {
+            ctExecutable.getAnnotations().forEach(annotationConsumer);
+            for (CtParameter<?> parameter : ctExecutable.getParameters()) {
                 parameter.getAnnotations().forEach(annotationConsumer);
                 references.add(parameter.getType());
-                tempCheck(parameter.getType(), clazz, parameter.toString());
             }
 
             // Get the body if the method has one
-            CtBlock<?> body = ctMethod.getBody();
+            CtBlock<?> body = ctExecutable.getBody();
             if (body == null) {
                 continue;
             }
@@ -215,33 +219,20 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             //add all references for the constructor calls in the method
             for(CtConstructorCall<?> c : constructorElements){
                 references.add(c.getType());
-                tempCheck(c.getType(), clazz, c.toString());
             }
 
             // Get all invocations in the method
             List<CtInvocation<?>> invocationElements = body
                     .getElements(new TypeFilter<>(CtInvocation.class));
 
-
+            // Retrieve the dependencies of all invocations
             for(CtInvocation<?> c : invocationElements){
                 if(c.getExecutable().getDeclaringType() == null){
-                    if(clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")) {
-                        System.out.println("Pyne cannot find declaration of " + c + "with direct children" + c.getDirectChildren());
-                        System.out.println("It has the type: "+c.getType());
-                        for (CtElement child : c.getDirectChildren()) {
-                            System.out.println(child + " is actually invocation " + (child instanceof CtInvocation));
-                            System.out.println(child + " is actually CtExecutableReference " + (child instanceof CtExecutableReference));
-                            if (child instanceof CtExecutableReference)
-                                System.out.println(child + " declaring type: " + ((CtExecutableReference) child).getDeclaringType());
-                        }
-                    }
+                    LOGGER.warn("Spoon cannot find the declaration of " + c);
+                    counter++;
+                    LOGGER.warn("instance count " + counter);
                 }else {
                     references.add(c.getExecutable().getDeclaringType());
-                    if(tempCheck(c.getExecutable().getDeclaringType(), clazz, c.toString())){
-                        System.out.println("found "+ c);
-                        System.out.println("actual type arguments "+ c.getActualTypeArguments());
-                        System.out.println("direct children "+ c.getDirectChildren());
-                    }
                 }
             }
         }
@@ -253,24 +244,9 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
         for (CtField<?> field : (List<CtField<?>>) clazz.getFields()) {
             field.getAnnotations().forEach(annotationConsumer);
             references.add(field.getType());
-            tempCheck(field.getType(), clazz, field.toString());
         }
 
         return references;
-    }
-
-    private boolean tempCheck(CtTypeReference t, CtType clazz, String source){
-        if(//t.getQualifiedName().contains("PlanProto.ProjectionNode") ||
-                //t.getQualifiedName().contains("org.apache.tajo.storage.StorageFragmentProtos") ||
-               // t.getQualifiedName().contains("PlanProto.RootNode") ||
-                //t.getQualifiedName().contains("Schema") ||
-                clazz.getQualifiedName().contains("org.apache.tajo.storage.StorageUtil")){
-            System.out.println("\nfound extra dependency "+t.getQualifiedName());
-            System.out.println("for class "+clazz.getQualifiedName());
-            System.out.println("for source "+source);
-            return true;
-        }
-        return false;
     }
 
 
