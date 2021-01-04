@@ -381,7 +381,7 @@ public class Comparator {
                 // the "labelE" key indicates the type of edge this node represents
                 // so we filter the ones we are not interested in according to classLevel
                 // the expression: 'data.getTextContent().contains("package") == classLevel'
-                // essentially inverts 'data.getTextContent().contains("package")' if classLevel is true
+                // essentially inverts 'data.getTextContent().contains("package")' if classLevel is false
                 // consider this truth table, where a = 'data.getTextContent().contains("package")', b = 'classLevel',
                 // which explains the result we want: if(b) return a else return !a. we can see this is equal to a == b
                 // a b
