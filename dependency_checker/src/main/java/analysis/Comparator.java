@@ -380,7 +380,16 @@ public class Comparator {
 
                 // the "labelE" key indicates the type of edge this node represents
                 // so we filter the ones we are not interested in according to classLevel
-                if (key.equals("labelE") && !data.getTextContent().contains(classLevel ? "class" : "package")) {
+                // the expression: 'data.getTextContent().contains("package") != classLevel'
+                // essentially inverts 'data.getTextContent().contains("package")' if classLevel is true
+                // consider this truth table, where a = 'data.getTextContent().contains("package")', b = 'classLevel',
+                // which explains the result we want: if(b) return !a else return a. we can see this is equal to a != b
+                // a b
+                // 1 1 --> 0
+                // 1 0 --> 1
+                // 0 1 --> 1
+                // 0 0 --> 0
+                if(key.equals("labelE") && (data.getTextContent().contains("package") != classLevel)) {
                     shouldAdd = false;
                     break;
                 }
@@ -389,8 +398,8 @@ public class Comparator {
             if(shouldAdd) {
                 SrcItm from = idMap.get(sourceId);
                 SrcItm to = idMap.get(targetId);
-                foundDependency(from.getName(), from.isInternal(), from.getId(),
-                        to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1, classLevel);
+                if(from != null && to != null) foundDependency(from.getName(), from.isInternal(), from.getId(),
+                            to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1, classLevel);
             }
         }
     }
@@ -411,14 +420,15 @@ public class Comparator {
 
     /**
      *
-     * @param from
-     * @param isFromInternal
-     * @param fromId
+     * @param from the name of the item where the dependency comes from
+     * @param isFromInternal whether from is internal or not
+     * @param fromId the id of the from item
      * @param to
      * @param isToInternal
      * @param toId
      * @param toolName
      * @param amount
+     * @param classLevel
      * @return
      */
     private Dep foundDependency(String from, Boolean isFromInternal, int fromId,
