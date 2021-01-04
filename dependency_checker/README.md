@@ -2,7 +2,7 @@
 This program works with any graph that Pyne outputs (in theory)
 
 To generate the expected matrix from Structure101, one must right-click anywhere outside the packages in the main graph view,
-hover over the "Flatten" option, and select "To leaf packages" (for comparing on package level) or "" (for comparing on a class level) from the sub-menu.
+hover over the "Flatten" option, and select "To leaf packages" (for comparing on package level) or "To classes" (for comparing on a class level) from the sub-menu.
 
 Next, go to the "View" tab and select the composition view.
 You should now see the matrix that shows the amount of dependencies between each package.
