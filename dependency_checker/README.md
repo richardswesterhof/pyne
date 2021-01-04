@@ -5,7 +5,7 @@ To generate the expected matrix from Structure101, one must right-click anywhere
 hover over the "Flatten" option, and select "To leaf packages" (for comparing on package level) or "To classes" (for comparing on a class level) from the sub-menu.
 
 Next, go to the "View" tab and select the composition view.
-You should now see the matrix that shows the amount of dependencies between each package.
+You should now see the matrix that shows the amount of dependencies between each class/package.
 
 After this, a CSV file must be exported by clicking the export icon in the top right toolbar in the matrix panel.
 Make sure that you select "file" for the "Export to" option, then select "Matrix as CSV" in the "Export as" dropdown.
