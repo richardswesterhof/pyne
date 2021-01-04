@@ -396,10 +396,10 @@ public class Comparator {
     }
 
     /**
-     * marks a class as found by the given tool
-     * by updating an existing or creating a new class in the classMap,
+     * marks an item as found by the given tool
+     * by updating an existing or creating a new item in the itemMap,
      * depending on whether it already exists or not
-     * and adding it to the list of found classes of the given tool
+     * and adding it to the list of found items of the given tool
      * @param itm the name of the itm
      * @param toolName the name of the tool that found it
      * @param internal whether or not this is an internal class
@@ -446,11 +446,11 @@ public class Comparator {
 
     /**
      * creates a new itm in the itemMap
-     * and adds it to the list of found class of the given tool
+     * and adds it to the list of found items of the given tool
      * @param itm the name of the itm
      * @param toolName the name of the tool that found it
-     * @param internal whether or not this is an internal class
-     * @param id the id of the class that was assigned by the tool
+     * @param internal whether or not this is an internal item
+     * @param id the id of the item, that was assigned by the tool
      */
     private SrcItm addNewItem(String itm, TOOL_NAME toolName, Boolean internal, Integer id, boolean classLevel) {
         // check if the class was not already in the classMap by another name (longer/shorter)
