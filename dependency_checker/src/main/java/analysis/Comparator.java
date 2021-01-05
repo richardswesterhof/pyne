@@ -423,13 +423,13 @@ public class Comparator {
      * @param from the name of the item where the dependency comes from
      * @param isFromInternal whether from is internal or not
      * @param fromId the id of the from item
-     * @param to
-     * @param isToInternal
-     * @param toId
-     * @param toolName
-     * @param amount
-     * @param classLevel
-     * @return
+     * @param to the name of the to item
+     * @param isToInternal whether to is internal or not
+     * @param toId the id of the to item
+     * @param toolName the name of the tool that found the dependency
+     * @param amount the amount of dependencies there are between the two items
+     * @param classLevel whether or not to analyse on a class level (false = package level)
+     * @return the Dep object that represents this dependency
      */
     private Dep foundDependency(String from, Boolean isFromInternal, int fromId,
                                 String to, Boolean isToInternal, int toId, TOOL_NAME toolName,
