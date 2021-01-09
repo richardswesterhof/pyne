@@ -380,7 +380,16 @@ public class Comparator {
 
                 // the "labelE" key indicates the type of edge this node represents
                 // so we filter the ones we are not interested in according to classLevel
-                if (key.equals("labelE") && !data.getTextContent().contains(classLevel ? "class" : "package")) {
+                // the expression: 'data.getTextContent().contains("package") == classLevel'
+                // essentially inverts 'data.getTextContent().contains("package")' if classLevel is false
+                // consider this truth table, where a = 'data.getTextContent().contains("package")', b = 'classLevel',
+                // which explains the result we want: if(b) return a else return !a. we can see this is equal to a == b
+                // a b
+                // 1 1 --> 1
+                // 1 0 --> 0
+                // 0 1 --> 0
+                // 0 0 --> 1
+                if(key.equals("labelE") && (data.getTextContent().contains("package") == classLevel)) {
                     shouldAdd = false;
                     break;
                 }
@@ -389,17 +398,17 @@ public class Comparator {
             if(shouldAdd) {
                 SrcItm from = idMap.get(sourceId);
                 SrcItm to = idMap.get(targetId);
-                foundDependency(from.getName(), from.isInternal(), from.getId(),
-                        to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1, classLevel);
+                if(from != null && to != null) foundDependency(from.getName(), from.isInternal(), from.getId(),
+                            to.getName(), to.isInternal(), to.getId(), TOOL_NAME.PYNE, -1, classLevel);
             }
         }
     }
 
     /**
-     * marks a class as found by the given tool
-     * by updating an existing or creating a new class in the classMap,
+     * marks an item as found by the given tool
+     * by updating an existing or creating a new item in the itemMap,
      * depending on whether it already exists or not
-     * and adding it to the list of found classes of the given tool
+     * and adding it to the list of found items of the given tool
      * @param itm the name of the itm
      * @param toolName the name of the tool that found it
      * @param internal whether or not this is an internal class
@@ -411,15 +420,16 @@ public class Comparator {
 
     /**
      *
-     * @param from
-     * @param isFromInternal
-     * @param fromId
-     * @param to
-     * @param isToInternal
-     * @param toId
-     * @param toolName
-     * @param amount
-     * @return
+     * @param from the name of the item where the dependency comes from
+     * @param isFromInternal whether from is internal or not
+     * @param fromId the id of the from item
+     * @param to the name of the to item
+     * @param isToInternal whether to is internal or not
+     * @param toId the id of the to item
+     * @param toolName the name of the tool that found the dependency
+     * @param amount the amount of dependencies there are between the two items
+     * @param classLevel whether or not to analyse on a class level (false = package level)
+     * @return the Dep object that represents this dependency
      */
     private Dep foundDependency(String from, Boolean isFromInternal, int fromId,
                                 String to, Boolean isToInternal, int toId, TOOL_NAME toolName,
@@ -446,11 +456,11 @@ public class Comparator {
 
     /**
      * creates a new itm in the itemMap
-     * and adds it to the list of found class of the given tool
+     * and adds it to the list of found items of the given tool
      * @param itm the name of the itm
      * @param toolName the name of the tool that found it
-     * @param internal whether or not this is an internal class
-     * @param id the id of the class that was assigned by the tool
+     * @param internal whether or not this is an internal item
+     * @param id the id of the item, that was assigned by the tool
      */
     private SrcItm addNewItem(String itm, TOOL_NAME toolName, Boolean internal, Integer id, boolean classLevel) {
         // check if the class was not already in the classMap by another name (longer/shorter)
