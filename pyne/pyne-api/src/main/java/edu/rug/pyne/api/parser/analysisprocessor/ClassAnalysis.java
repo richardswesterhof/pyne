@@ -39,8 +39,6 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
     private static final Logger LOGGER
             = LogManager.getLogger(ClassAnalysis.class);
 
-    private long counter = 0;
-
     /**
      * A consumer for annotations, used to get the type and add the declaration
      * of it
@@ -229,10 +227,11 @@ public class ClassAnalysis extends AbstractProcessor<CtClass<?>> {
             for(CtInvocation<?> c : invocationElements){
                 if(c.getExecutable().getDeclaringType() == null){
                     LOGGER.warn("Spoon cannot find the declaration of " + c);
-                    counter++;
-                    LOGGER.warn("instance count " + counter);
                 }else {
-                    references.add(c.getExecutable().getDeclaringType());
+                    if(!(c.getExecutable().getDeclaringType().getTypeDeclaration() == null))
+                        references.add(c.getExecutable().getDeclaringType());
+                    else
+                        LOGGER.warn("Spoon cannot find the declaring type of " + c);
                 }
             }
         }
