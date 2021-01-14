@@ -1,0 +1,3 @@
+What was the grade give for pyne's bachelor project?
+Does pyne need to check "test" and "example" folders?
+Does pyne need to remove nodes with no dependencies?

@@ -1,0 +1,12 @@
+;pyne-improved;structure101
+Found packages ;393;429
+Missed packages;104;68
+Found package dependencies;2431;3327
+Missed package dependencies;1560;664
+Found classes     ;3837;3259
+Missed classes;957;1535
+Found class dependencies;28889;36319
+Missed class dependencies;29667;22237
+Precision;82.70%;
+Recall;75.76%;
+F-measure;79.07%;

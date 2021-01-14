@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<results>
+	<allPackages count="Integer" countExternal="Integer" countInternal="Integer" countUnknown="Integer">
+		<pkg id="Integer" internal="Boolean">name.of.package</dependency>
+		etc.
+	</alPackages>
+	<allDependencies count="Integer">
+		<dep fromID="Integer" toID="Integer">
+			<!-- the following elements are only present when the "human-readable" option is used -->
+			<fromIsInternal>Boolean</fromIsInternal>
+			<fromName>name.of.package</fromName>
+			<toIsInternal>Boolean</toIsInternal>
+			<toName>name.of.other.package</toName>
+		</dep>
+		etc.
+	</allDependencies>
+	<tools count="Integer">
+		<tool name="String">
+			<foundPackages count="Integer" countExternal="Integer" countInternal="Integer" countUnknown="Integer" percentageExternal="Float" percentageInternal="Float" percentageTotal="Float" percentageUnknown="Float">
+				<!-- the "internal" attribute and the package name are not present when the "compact" option is used -->
+				<pkg id="Integer" internal="Boolean">name.of.package</pkg>
+				etc.
+			</foundPackages>
+			<missedPackages count="Integer" countExternal="Integer" countInternal="Integer" countUnknown="Integer" percentageExternal="Float" percentageInternal="Float" percentageTotal="Float" percentageUnknown="Float">
+				<!-- the "internal" attribute and the package name are not present when the "compact" option is used -->
+				<pkg id="Integer" internal="Boolean">name.of.package</pkg>
+				etc.
+			</missedPackages>
+			<foundDependencies count="Integer" percentageTotal="Float">
+				<dep fromID="Integer" toID="Integer">
+					<!-- the following elements are only present when the "human-readable" option is used -->
+					<fromIsInternal>Boolean</fromIsInternal>
+					<fromName>name.of.package</fromName>
+					<toIsInternal>Boolean</toIsInternal>
+					<toName>name.of.other.package</toName>
+				</dep>
+				etc.
+			</foundDependencies>
+			<missedDependencies count="Integer" percentageTotal="Float">
+				<dep fromID="Integer" toID="Integer">
+					<!-- the following elements are only present when the "human-readable" option is used -->
+					<fromIsInternal>Boolean</fromIsInternal>
+					<fromName>name.of.package</fromName>
+					<toIsInternal>Boolean</toIsInternal>
+					<toName>name.of.other.package</toName>
+				</dep>
+				etc.
+			</missedDependencies>
+		</tool>
+		etc.
+	</tools>
+</results>
