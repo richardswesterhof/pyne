@@ -109,7 +109,7 @@ public class Comparator {
     }
 
     /**
-     * collects the classes for all tools
+     * collects the items from all tools
      * @return this, to allow it to be chained with the other public methods.
      *         this will allow an entire analysis to be done in one line, if the user desires so
      */
@@ -123,7 +123,7 @@ public class Comparator {
     }
 
     /**
-     * checks for each found class which tool was and wasn't able to find it, and reports the results
+     * checks for each found item which tool was and wasn't able to find it, and reports the results
      * @return a Document tree containing the results per tool
      */
     public Document compareResults() {
@@ -179,7 +179,7 @@ public class Comparator {
             // we always want to get the complete versions
             allItms.appendChild(classLevel ? createClass(doc, itm) : createPackage(doc, itm));
 
-            // check for each tool if it was found this class
+            // check for each tool if it found this item
             for(Node node : toolNodeMap.values()) {
                 NodeList childNodes = node.getChildNodes();
                 TOOL_NAME tool = TOOL_NAME.valueOf(node.getAttributes().getNamedItem(XML_TAG.NAME).getTextContent());

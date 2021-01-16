@@ -1,0 +1,26 @@
+<results>
+    <allClasses count="5393" countExternal="2298" countInternal="2269" countUnknown="826">
+	</allClasses>
+    <allDependencies count="59914">
+	</allDependencies>
+    <tools count="2">
+        <tool name="STRUCTURE101">
+            <foundClasses count="3259" countExternal="942" countInternal="1491" countUnknown="826" percentageExternal="40.99217" percentageInternal="65.71177" percentageTotal="60.430187" percentageUnknown="100.0">
+			</foundClasses>
+            <missedClasses count="2134" countExternal="1356" countInternal="778" countUnknown="0" percentageExternal="59.007835" percentageInternal="34.288235" percentageTotal="39.569813" percentageUnknown="0">
+			</missedClasses>
+            <foundDependencies count="36319" percentageTotal="60.618557">
+			</foundDependencies>
+            <missedDependencies count="23595" percentageTotal="39.381447">
+		</tool>
+        <tool name="PYNE">
+            <foundClasses count="4517" countExternal="2248" countInternal="2269" countUnknown="0" percentageExternal="97.82419" percentageInternal="100.0" percentageTotal="83.75672" percentageUnknown="0">
+			</foundClasses>
+            <missedClasses count="876" countExternal="50" countInternal="0" countUnknown="826" percentageExternal="2.175805" percentageInternal="0" percentageTotal="16.243279" percentageUnknown="100.0">
+			</missedClasses>
+            <foundDependencies count="30090" percentageTotal="50.221985">
+			</foundDependencies>
+            <missedDependencies count="29824" percentageTotal="49.778015">
+		</tool>
+	</tools>
+</results>
