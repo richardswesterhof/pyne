@@ -69,11 +69,11 @@ public class Main {
             Comparator comparator = new Comparator(structure101Matrix, pyneGraph, classLevel, outputDetail).importFileData();
 
             // collect classes
-			System.out.println("Collecting " + (classLevel ? "classes" : "packages"));
+            System.out.println("Collecting " + (classLevel ? "classes" : "packages"));
             comparator.collectAllItems();
 
             // compare packages
-			System.out.println("Comparing " + (classLevel ? "classes" : "packages"));
+            System.out.println("Comparing " + (classLevel ? "classes" : "packages"));
             Document doc = comparator.compareResults();
 
             // output differences to xml file
